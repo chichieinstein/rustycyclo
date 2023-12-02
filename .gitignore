@@ -1,0 +1,6 @@
+**/target
+**/Cargo.lock
+**/.cache
+**/.gnupg
+**/.nv
+**/.vscode-server
