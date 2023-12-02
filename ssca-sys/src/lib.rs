@@ -9,11 +9,11 @@ pub struct Analyzer {
 extern "C" {
     pub fn ssca_create(
         k1: *mut Complex<f32>,
-        k2: *mut Complex<f32>,
+        // k2: *mut Complex<f32>,
         exp_mat: *mut Complex<f32>,
         n: i32,
         np: i32,
-        batch: i32,
+        size: i32,
     ) -> *mut Analyzer;
 
     pub fn ssca_destroy(inp: *mut Analyzer);
@@ -23,7 +23,6 @@ extern "C" {
         inp: *mut Complex<f32>,
         outp: *mut f32,
         conj: bool,
-        uncommented: bool,
     );
 }
 

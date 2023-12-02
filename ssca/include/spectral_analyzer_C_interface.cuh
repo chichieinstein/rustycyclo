@@ -8,9 +8,9 @@ typedef struct ssca ssca;
 
 extern "C" 
 {
-    ssca* ssca_create(complex<float>*, complex<float>*, complex<float>*, int, int, int);
+    ssca* ssca_create(complex<float>*, complex<float>*, int, int, int);
     void ssca_destroy(ssca*);
-    void ssca_process(ssca*, cufftComplex*, float*, bool, bool);
+    void ssca_process(ssca*, complex<float>*, float*, bool);
 }
 
 #endif
