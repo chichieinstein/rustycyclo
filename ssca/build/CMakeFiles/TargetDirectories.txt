@@ -1,3 +1,0 @@
-/root/ssca/ssca/build/CMakeFiles/analyzer.dir
-/root/ssca/ssca/build/CMakeFiles/edit_cache.dir
-/root/ssca/ssca/build/CMakeFiles/rebuild_cache.dir
