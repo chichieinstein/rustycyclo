@@ -1,0 +1,1 @@
+/usr/bin/g++ CMakeFiles/analyzer.dir/src/spectral_analyzer.cu.o CMakeFiles/analyzer.dir/src/main.cu.o -o analyzer  -lcufft -lcudadevrt -lcudart_static -lrt -lpthread -ldl  -L"/usr/local/cuda/targets/x86_64-linux/lib/stubs" -L"/usr/local/cuda/targets/x86_64-linux/lib"

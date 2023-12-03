@@ -3,29 +3,25 @@
 #include <complex.h>
 using std::complex;
 
-// void __global__ create_matrix_gpu(cufftComplex*, cufftComplex*, int, int);
+void __global__ create_matrix_gpu(cufftComplex*, cufftComplex*, int, int);
 
 void __global__ make_conj(cufftComplex*, size_t);
 
-// void create_batch_matrix_gpu(cufftComplex*, cufftComplex*, int, int, int);
+void create_batch_matrix_gpu(cufftComplex*, cufftComplex*, int, int, int);
 
-// void __global__ fft_shift(bool, cufftComplex*, int, int);
+void __global__ fft_shift(bool, cufftComplex*, int, int);
 
-// void __global__ vect_multiply(cufftComplex*, cufftComplex*, bool, bool, int, int);
+void __global__ vect_multiply(cufftComplex*, cufftComplex*, bool, bool, int, int);
 
-// void __global__ mat_multiply(cufftComplex*, cufftComplex*, int, int);
+void __global__ mat_multiply(cufftComplex*, cufftComplex*, int, int);
 
-void __global__ batch_average(cufftComplex*, float*, int, int, int);
+void __global__ average(cufftComplex*, float*, int, int, int);
 
 void __global__ reductor(float*, float*, int, int, int);
 
 void __global__ set_zero(float*, int);
 
-// void create_batched_center(cufftComplex*, cufftComplex*, int, int, int);
-
-void __global__ mat_mul_fft_shift_batch_reshape(cufftComplex*, cufftComplex*, cufftComplex*, int, int, int);
-
-void __global__ mat_vec_multiply_fft_shift_batch_center(cufftComplex*, cufftComplex*, cufftComplex*, bool, int, int, int);
+void create_batched_center(cufftComplex*, cufftComplex*, int, int, int);
 
 class ssca_cuda
 {
@@ -35,9 +31,9 @@ class ssca_cuda
     int BATCH;
     int size;
     cufftHandle plan_1;
-    // cufftHandle plan_2;
+    cufftHandle plan_2;
     // cufftHandle *plans_1;
-    cufftHandle *plans_2;
+    // cufftHandle *plans_2;
     cudaStream_t * streams;
     cudaEvent_t * events;
     int rank;
