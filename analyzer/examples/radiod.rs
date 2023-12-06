@@ -89,10 +89,10 @@ fn main() -> anyhow::Result<()> {
     })
     .unwrap();
 
-    while !should_stop.load(false) {
+    while !should_stop.load(Ordering::SeqCst) {
         let meta = stream.read(&mut input)?;
         println!("got: {:?}", meta);
-        ssca.process(&mut input[..meta.samples()], &mut output, false);
+        ssca.process(&mut input[..meta.samples()], false);
         println!("processed SSCA, output: {:?}", output);
     }
 
