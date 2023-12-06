@@ -112,8 +112,13 @@ int main()
     cudaStreamWaitEvent(0, stop, 0);
     Obj.cyclo_gram(reinterpret_cast<cufftComplex*>(inp), outp_conj, true);
     cudaEventRecord(stop);
+
     cudaStreamWaitEvent(0, stop, 0);
     cudaMemcpy(outp_conj_cpu, outp_conj, sizeof(float)*N*Np, cudaMemcpyDeviceToHost);
+    for (int i=0; i< 100; i++)
+    {
+        cout << outp_conj_cpu[i] << endl;
+    }
     cudaEventRecord(stop);
     cudaStreamWaitEvent(0, stop, 0);
     cudaMemcpy(outp_non_conj_cpu, outp_non_conj, sizeof(float)*N*Np, cudaMemcpyDeviceToHost);
@@ -169,9 +174,10 @@ int main()
     for (int j = 0; j < ntimes; j++)
     {
         // auto start = steady_clock::now();
-        cudaEventRecord(start_1);
+        cudaEventRecord(start_1, 0);
         Obj.cyclo_gram(reinterpret_cast<cufftComplex *>(inp), outp, true);
-        cudaEventRecord(stop_1);
+        reductor<<<N, 2>>>(outp_non_conj, oned_output, N, Np, reductor_size);
+        cudaEventRecord(stop_1, 0);
         cudaEventSynchronize(stop_1);
         cudaEventElapsedTime(&elapsed_single_time, start_1, stop_1);
         cout << elapsed_single_time << endl;

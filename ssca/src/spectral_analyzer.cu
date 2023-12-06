@@ -203,9 +203,11 @@ ssca_cuda::ssca_cuda(complex<float> *k1, complex<float> *e_mat, int Nval, int Np
     inembed_2 = n_2;
     onembed_2 = n_2;
 
-    streams = new cudaStream_t[BATCH];
+    cudaEventCreateWithFlags(&stop, cudaEventBlockingSync);
+
+    // streams = new cudaStream_t[BATCH];
     // plans_2 = new cufftHandle[BATCH];
-    events = new cudaEvent_t[BATCH];
+    // events = new cudaEvent_t[BATCH];
 
     cufftPlanMany(&plan_1, rank, n_1, inembed_1, istride_1, idist_1, onembed_1, ostride_1, odist_1, CUFFT_C2C, batch_1);
     cufftPlanMany(&plan_2, rank, n_2, inembed_2, istride_2, idist_2, onembed_2, ostride_2, odist_2, CUFFT_C2C, batch_2);
@@ -225,6 +227,7 @@ ssca_cuda::ssca_cuda(complex<float> *k1, complex<float> *e_mat, int Nval, int Np
     cudaMalloc((void **)&inter_gpu, sizeof(cufftComplex) * N * Np * BATCH);
     // cudaMalloc((void **)&inter_inter_gpu, sizeof(cufftComplex) * N * Np * BATCH);
     // cudaMalloc((void **)&inter_center_gpu, sizeof(cufftComplex) * N * BATCH);
+    cudaMalloc((void **)&output_oned_buffer, sizeof(float)*(2*N - Np / 2));
     cudaMalloc((void **)&output_buffer, sizeof(float) * N * Np);
 }
 
@@ -264,16 +267,25 @@ void ssca_cuda::cyclo_gram(cufftComplex *input, float *output, bool conj)
     // auto error_5 = cudaGetLastError();
     // cout << cudaGetErrorString(error_5) << endl;
     cudaMemcpy(output, output_buffer, sizeof(float) * N * Np, cudaMemcpyDeviceToDevice);
+    cudaEventRecord(stop);
+
+    cudaEventSynchronize(stop);
 }
+
+void ssca_cuda::ssca_reduce(float* output)
+{
+    reductor<<<N, 2>>>(output_buffer, output, N, Np, (2*N-Np / 2));
+}
+
 ssca_cuda::~ssca_cuda()
 {
-    for (int i = 0; i < BATCH; i++)
-    {
-        // cufftDestroy(plans_2[i]);
-        // cufftDestroy(plans_1[i]);
-        cudaEventDestroy(events[i]);
-        cudaStreamDestroy(streams[i]);
-    }
+    // for (int i = 0; i < BATCH; i++)
+    // {
+    //     // cufftDestroy(plans_2[i]);
+    //     // cufftDestroy(plans_1[i]);
+    //     cudaEventDestroy(events[i]);
+    //     cudaStreamDestroy(streams[i]);
+    // }
     cufftDestroy(plan_1);
     cufftDestroy(plan_2);
     delete[] n_1;

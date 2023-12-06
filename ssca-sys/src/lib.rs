@@ -25,7 +25,10 @@ extern "C" {
         conj: bool,
     );
 
-    pub fn reduce(inp: *mut f32, outp: *mut f32, n: i32, np: i32, r_size: i32);
+    pub fn ssca_reduce2D(
+        analyzer: *mut Analyzer,
+        outp: *mut f32,
+    );
 
     pub fn allocate_device(size: i32) -> *mut f32;
 
@@ -34,8 +37,10 @@ extern "C" {
     pub fn deallocate_device(inp: *mut f32);
     pub fn deallocate_cpu(inp: *mut f32);
 
-    pub fn copy_cpu_gpu(inp: *mut f32, outp: *mut f32, size: i32);
-    pub fn copy_gpu_cpu(inp: *mut f32, outp: *mut f32, size: i32);
+    pub fn copy_cpu_to_gpu(inp: *mut f32, outp: *mut f32, size: i32);
+    pub fn copy_gpu_to_cpu(inp: *mut f32, outp: *mut f32, size: i32);
 
     pub fn bessel_func(inp: f32) -> f32;
+
+    pub fn zero_out(inp: *mut f32, size: i32);
 }

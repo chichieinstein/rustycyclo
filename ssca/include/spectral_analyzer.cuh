@@ -34,8 +34,9 @@ class ssca_cuda
     cufftHandle plan_2;
     // cufftHandle *plans_1;
     // cufftHandle *plans_2;
-    cudaStream_t * streams;
-    cudaEvent_t * events;
+    // cudaStream_t * streams;
+    // cudaEvent_t * events;
+    cudaEvent_t stop;
     int rank;
     int istride_1;
     int idist_1;
@@ -62,9 +63,12 @@ class ssca_cuda
     // cufftComplex *inter_center_gpu;
 
     float* output_buffer;
+
+    float* output_oned_buffer;
     
     ssca_cuda(complex<float>*, complex<float>*, int, int, int);
     void cyclo_gram(cufftComplex*, float*, bool);
+    void ssca_reduce(float*);
     ~ssca_cuda();
 };
 

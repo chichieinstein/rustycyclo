@@ -20,9 +20,10 @@ extern "C"
         reinterpret_cast<ssca_cuda*>(ssca_obj)->cyclo_gram(reinterpret_cast<cufftComplex*>(input), output, conj);
     }
 
-    void reduce(float* ssca_2d, float* ssca_1d, int N, int Np, int reductor_size)
+    void ssca_reduce2D(ssca* ssca_obj, float* output)
     {
-        reductor<<<N, 2>>>(ssca_2d, ssca_1d, N, Np, reductor_size);
+        reinterpret_cast<ssca_cuda*>(ssca_obj)->ssca_reduce(output);
+        // reductor<<<N, 2>>>(ssca_2d, ssca_1d, N, Np, reductor_size);
     }
 
     float* allocate_device(int size)
@@ -49,12 +50,12 @@ extern "C"
         delete [] inp;
     }
 
-    void copy_cpu_gpu(float* inp, float* outp, int size)
+    void copy_cpu_to_gpu(float* inp, float* outp, int size)
     {
         cudaMemcpy(outp, inp, sizeof(float)*size, cudaMemcpyHostToDevice);
     }
 
-    void copy_gpu_cpu(float* inp, float* outp, int size)
+    void copy_gpu_to_cpu(float* inp, float* outp, int size)
     {
         cudaMemcpy(outp, inp, sizeof(float)*size, cudaMemcpyDeviceToHost);
     }
@@ -62,5 +63,10 @@ extern "C"
     float bessel_func(float inp)
     {
         return cyl_bessel_if(0.0, inp);
+    }
+
+    void zero_out(float* inp, int size)
+    {
+        set_zero<<<size, 1>>>(inp, size);
     }
 }
