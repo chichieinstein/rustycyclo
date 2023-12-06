@@ -26,8 +26,8 @@ int main()
     // int size = 132096*8;
     int size = 133120*8;
     // int batch = 32;
-    float kbeta_1 = 40.0;
-    float kbeta_2 = 40.0;
+    float kbeta_1 = 80.0;
+    float kbeta_2 = 80.0;
 
     int reductor_size = 2*N - Np / 2;
 
@@ -156,27 +156,30 @@ int main()
     new_file_conj.write((char*)oned_output_conj_cpu, sizeof(float)*reductor_size);
     new_file_conj.close();
     float elapsed_time = 0.0;
-
+    float elapsed_single_time = 0.0;
     
     cudaEvent_t start_1, stop_1;
     cudaEventCreate(&start_1);
     cudaEventCreate(&stop_1);
 
-    cudaEventRecord(start_1);
+    // cudaEventRecord(start_1);
 
     int ntimes = 100;
+    cout << "-----------------Time------------------------" << endl;
     for (int j = 0; j < ntimes; j++)
     {
         // auto start = steady_clock::now();
+        cudaEventRecord(start_1);
         Obj.cyclo_gram(reinterpret_cast<cufftComplex *>(inp), outp, true);
+        cudaEventRecord(stop_1);
+        cudaEventSynchronize(stop_1);
+        cudaEventElapsedTime(&elapsed_single_time, start_1, stop_1);
+        cout << elapsed_single_time << endl;
+        elapsed_time += elapsed_single_time;
     //     // auto end = steady_clock::now();
     //     // auto elapsed = duration<float, milli>(end - start).count();
     //     // elapsed_time += elapsed;
     }
-
-    cudaEventRecord(stop_1);
-    cudaEventSynchronize(stop_1);
-    cudaEventElapsedTime(&elapsed_time, start_1, stop_1);
 
     cout << "Time taken to process " << size << " samples using SSCA is " << elapsed_time / ntimes << " in milliseconds" << endl;
 
