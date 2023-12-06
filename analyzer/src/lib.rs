@@ -2,8 +2,25 @@ extern crate ssca_sys;
 use std::any;
 
 use num::Complex;
-use ssca_sys::{ssca_create, ssca_destroy, ssca_process, Analyzer};
+use ssca_sys::{ssca_create, ssca_destroy, ssca_process, Analyzer, reduce, allocate_cpu, allocate_device, deallocate_cpu, deallocate_device};
 
+pub struct DevicePtr
+{
+    buffer: *mut f32
+}
+
+impl DevicePtr {
+    pub fn new(size: i32) -> Self {
+        Self { buffer: unsafe{allocate_device(size)}}
+    }
+}
+
+impl Drop for DevicePtr {
+    fn drop(&mut self)
+    {
+        unsafe{deallocate_device(self.buffer)};
+    }
+}
 pub struct SSCA {
     opaque_analyzer: *mut Analyzer,
 }
@@ -40,33 +57,21 @@ impl SSCA {
     }
 }
 
+impl Drop for SSCA 
+{
+    fn drop(&mut self)
+    {
+        unsafe{
+            ssca_destroy(self.opaque_analyzer);
+        }
+    }
+}
+
 mod tests {
     use super::*;
 
     #[test]
     fn works() {
-        let mut k1 = vec![
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-        ];
-
-        let mut k2 = vec![
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-            Complex::new(0.0 as f32, 1.1 as f32),
-        ];
-
-        let mut inp = vec![Complex::new(0.0, 0.0 as f32); 1000];
-        let mut exp_mat = vec![Complex::new(0.0, 0.0 as f32); 24];
-        let mut outp = vec![0.0 as f32; 1000];
-
-        let mut analyzer = SSCA::new(&mut k1, &mut k2, 6, 4, 12);
-
-        analyzer.process(&mut inp, &mut outp, false);
+        todo!();
     }
 }
