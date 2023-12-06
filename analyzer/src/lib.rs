@@ -70,10 +70,11 @@ impl Drop for SSCA {
 
 mod tests {
     use super::*;
-    use std::f32::consts::PI;
 
     #[test]
     fn works() {
+        use std::f32::consts::PI;
+        use std::io::Read;
         /// Set things up
         let n: i32 = 8192;
         let np = 128;
@@ -88,16 +89,16 @@ mod tests {
         let mut sum_1: f32;
         let mut sum_2: f32;
 
-        let mut k1: Vec<Complex<f32>> = (0..n)
+        let mut k1: Vec<Complex<f32>> = (0..np)
             .map(|x| {
                 let y = x as f32;
-                let arg = 2.0 * y / n_float - 1.0;
+                let arg = 2.0 * y / np_float - 1.0;
                 let carg = kbeta_2 * (1.0 - arg * arg).sqrt();
                 Complex::new(unsafe { bessel_func(carg) / bessel_func(kbeta_1) }, 0.0)
             })
             .collect();
 
-        let mut k2: Vec<Complex<f32>> = (0..np)
+        let mut k2: Vec<Complex<f32>> = (0..n)
             .map(|x| {
                 let y = x as f32;
                 let arg = 2.0 * y / n_float - 1.0;
@@ -118,7 +119,7 @@ mod tests {
 
         exp_mat
             .chunks_mut(np as usize)
-            .zip((0..n))
+            .zip(0..n)
             .for_each(|(x, ind0)| {
                 for (ind1, item) in x.iter_mut().enumerate() {
                     let exp_arg = -0.5 + (ind0 as f32) / np_float;
@@ -132,12 +133,17 @@ mod tests {
         /// Create SSCA object
         let mut Obj = SSCA::new(&mut k1, &mut exp_mat, n, np, size);
 
-        // // Read data from file
-        // let mut file = std::fs::File::open("../busyBand/DSSS.32cf").unwrap();
-        // let mut samples_bytes = Vec::new();
-        // let _ = file.read_to_end(&mut samples_bytes);
-        // let samples: &[f32] = bytemuck::cast_slice(&samples_bytes);
+        // Read data from file
+        let mut file = std::fs::File::open("../dsss_10dB_1.32cf").unwrap();
+        let mut samples_bytes = Vec::new();
+        let _ = file.read_to_end(&mut samples_bytes);
+        let mut input: &mut [Complex<f32>] = bytemuck::cast_slice_mut(&mut samples_bytes);
+        let mut input_vec = vec![Complex::new(0.0 as f32, 0.0); size as usize];
+        // println!("{}", input.len());
 
+        input_vec[..input.len()].clone_from_slice(input);
+
+        Obj.process(&mut input_vec, true);
         // // Copy onto input
         // let mut input_vec = vec![0.0 as f32; (nch * nslice) as usize];
         // input_vec[..samples.len()].clone_from_slice(samples);

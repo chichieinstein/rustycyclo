@@ -11,7 +11,7 @@ extern "C"
     ssca* ssca_create(complex<float>*, complex<float>*, int, int, int);
     void ssca_destroy(ssca*);
     void ssca_process(ssca*, complex<float>*, float*, bool);
-    void reduce(float*, float*, float*, int, int, int);
+    void reduce(float*, float*, int, int, int);
 
     float* allocate_device(int);
     void deallocate_device(float*);
