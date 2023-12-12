@@ -253,12 +253,6 @@ mod tests {
         // check every element of output_vec is zero
         assert!(output_vec.iter().all(|&x| x == 0.0));
 
-        // create constant input vector
-        let mut input_vec = vec![Complex::new(1.0, 0.0); input_size as usize];
-
-        // process input vector, and store ouptut in output_vec
-        let output_vec = sscawrapper.process(&mut input_vec, false);
-
         let mut rng = rand::thread_rng();
         let normal = Normal::new(0.0, 1.0).unwrap();
         let mut gaussian_noise: Vec<Complex<f32>> = (0..input_size)
@@ -273,17 +267,23 @@ mod tests {
         for i in (0..gaussian_noise.len()).step_by(num_step) {
             for j in 1..num_step {
                 // set the value to gaussian_noise[i] divided by window
-                gaussian_noise[i + j] = gaussian_noise[i] / window[j];
+                // gaussian_noise[i + j] = gaussian_noise[i] / window[j];
+                gaussian_noise[i + j] = Complex::new(0.0, 0.0);
             }
         }
 
-        let output_vec = sscawrapper.process(&mut gaussian_noise, false);
+        // print first 10 elements of gaussian_noise
+        println!("{:?}", &gaussian_noise[0..10]);
+
+        let output_vec = sscawrapper.process(&mut gaussian_noise, true);
+        // print output_vec
+        println!("{:?}", output_vec);
 
         // get  cycles_vec
         let cycles_vec = sscawrapper.get_cycles_vec();
 
-        // print cycles_vec of 64
-        println!("{:?}", &cycles_vec[0..64]);
+        // print cycles_vec
+        println!("{:?}", cycles_vec);
     }
 
     #[test]
