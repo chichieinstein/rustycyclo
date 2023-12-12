@@ -59,8 +59,11 @@ if __name__ == '__main__':
     output = output.reshape((N, Np))
     conj_outp = np.fromfile("conj_arr.32f", dtype='float32')
     conj_outp = conj_outp.reshape((N,Np))
-    oned_outp = np.fromfile("non_conj_arr_oned.32f", dtype='float32')
-    oned_conj_outp = np.fromfile("conj_arr_oned.32f", dtype='float32')
+    
+    oned_outp_max = np.fromfile("non_conj_arr_oned_max.32f", dtype='float32')
+    oned_conj_outp_max = np.fromfile("conj_arr_oned_max.32f", dtype='float32')
+    oned_outp_sum = np.fromfile("non_conj_arr_oned_sum.32f", dtype='float32')
+    oned_conj_outp_sum = np.fromfile("conj_arr_oned_sum.32f", dtype='float32')
 
     print(len(output))
     fig, ((ax_1, ax_2), (ax_3, ax_4)) = plt.subplots(2, 2)
@@ -71,17 +74,17 @@ if __name__ == '__main__':
     for ind in range(reductor_size):
         reduced_index           =  ind if (ind < N) else (ind - N + (Np // 2))
         cycles[ind]        =  (Q[reduced_index] + K[0]) if (ind < N) else (Q[reduced_index] + K[-1])
-    ax_1.pcolor(K, Q, output)
-    ax_1.set_title('Non-Conjugate KQ-Domain plot')
+    ax_1.plot(cycles, oned_conj_outp_sum)
+    ax_1.set_title('Conjugate 1D Sum Reduction')
 
-    ax_3.pcolor(K, Q, conj_outp)
-    ax_3.set_title('Conjugate KQ-Domain plot')
+    ax_3.plot(cycles, oned_conj_outp_max)
+    ax_3.set_title('Conjugate 1D Max Reduction')
 
-    ax_2.plot(cycles, oned_outp)
-    ax_2.set_title('Non-Conjugate 1D-plot')
+    ax_2.plot(cycles, oned_outp_max)
+    ax_2.set_title('Non Conjugate 1D Max reduction')
 
-    ax_4.plot(cycles, oned_conj_outp)
-    ax_4.set_title('Conjugate 1D-plot')
+    ax_4.plot(cycles, oned_outp_sum)
+    ax_4.set_title('Non Conjugate 1D Sum reduction')
     
     fig.tight_layout()
     fig.savefig('DSSS_7spc_cpp_trial_6_less_averaging_even_more_beta.png')
