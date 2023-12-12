@@ -162,6 +162,7 @@ fn get_cycles_vec(output_size: i32, n: i32, np: i32) -> Vec<f32> {
 }
 pub struct SSCAWrapper {
     ssca_handle: SSCA,
+    n: i32,
     input_size: i32,
     output_size: i32,
     ssca_sum_buffer_1d: Vec<f32>,
@@ -234,6 +235,7 @@ impl SSCAWrapper {
         SSCAWrapper {
             // Populate fields if necessary
             ssca_handle: ssca,
+            n: n,
             input_size: size,
             output_size: 2 * n - np / 2,
             ssca_sum_buffer_1d: vec![0.0; (2 * n - np / 2) as usize],
@@ -254,6 +256,10 @@ impl SSCAWrapper {
         &self.cycles_vec
     }
 
+    pub fn get_n(&self) -> i32 {
+        self.n
+    }
+
     pub fn process(&mut self, inp: &mut [Complex<f32>], conj: bool) -> (&[f32], &[f32]) {
         // To get normal SSCA, use conj: False
 
@@ -263,7 +269,7 @@ impl SSCAWrapper {
 
         unsafe {
             copy_gpu_to_cpu(
-                self.ssca_handle.output_buffer.buffer,
+                self.ssca_handle.output_oned_buffer.buffer,
                 self.ssca_sum_buffer_1d.as_mut_ptr(),
                 self.output_size,
             );
@@ -273,7 +279,7 @@ impl SSCAWrapper {
 
         unsafe {
             copy_gpu_to_cpu(
-                self.ssca_handle.output_buffer.buffer,
+                self.ssca_handle.output_oned_buffer.buffer,
                 self.ssca_max_buffer_1d.as_mut_ptr(),
                 self.output_size,
             );
@@ -315,6 +321,16 @@ mod tests {
         // check every element of output_vec is zero
         assert!(output_vec.iter().all(|&x| x == 0.0));
 
+        // get cycles_vec
+        let cycles_vec = sscawrapper.get_cycles_vec();
+        let cycle_zero_idx = cycles_vec
+            .iter()
+            .position(|&x| (x - 0.0).abs() < 1e-6)
+            .unwrap();
+        println!("cycle_zero_idx: {}", cycle_zero_idx);
+
+        let ssca_n = sscawrapper.get_n();
+
         let upsample_size = 4;
         let bpsk_symbols = bpsk_symbols((input_size / upsample_size).try_into().unwrap());
         let mut bpsk_symbols_upsampled = upsample(&bpsk_symbols, upsample_size.try_into().unwrap());
@@ -322,15 +338,45 @@ mod tests {
         // print first 12 elements of bpsk_symbols_upsampled
         println!("{:?}", &bpsk_symbols_upsampled[0..12]);
 
-        let (output_vec, _) = sscawrapper.process(&mut bpsk_symbols_upsampled, false);
-        // print output_vec
-        println!("{:?}", output_vec);
+        let (output_vec_sum, output_vec_max) =
+            sscawrapper.process(&mut bpsk_symbols_upsampled, false);
 
-        // get  cycles_vec
-        let cycles_vec = sscawrapper.get_cycles_vec();
+        // get sum of entire output_vec
+        let mut ssca_sum_of_sum: f32 = output_vec_sum.iter().sum();
+        let mut ssca_sum_of_max: f32 = output_vec_max.iter().sum();
 
-        // print cycles_vec
-        println!("{:?}", cycles_vec);
+        let fundamental_cycle_idx = ((ssca_n as f32) / (upsample_size as f32)) as i32;
+        // create array with first, second and third fundamental cycles
+        let expected_cycles = vec![
+            cycle_zero_idx,
+            cycle_zero_idx + fundamental_cycle_idx as usize,
+            cycle_zero_idx + 2 * fundamental_cycle_idx as usize,
+        ];
+
+        let prominence_sum_of_sum = expected_cycles
+            .iter()
+            .map(|&x| output_vec_sum[x] / ssca_sum_of_sum * (output_vec_sum.len() as f32))
+            .collect::<Vec<f32>>();
+
+        let prominence_sum_of_max = expected_cycles
+            .iter()
+            .map(|&x| output_vec_max[x] / ssca_sum_of_max * (output_vec_max.len() as f32))
+            .collect::<Vec<f32>>();
+        // print expected_cycle/sum
+        println!("expected_cycles/sum_of_sum: {:?}", prominence_sum_of_sum);
+
+        // assert that prominence is all more than 10
+        assert!(prominence_sum_of_sum.iter().all(|&x| x > 10.0));
+
+        // print expected_cycle/sum
+        println!("expected_cycles/sum_of_max: {:?}", prominence_sum_of_max);
+
+        // assert that sum of max prominence is less than sum of sum
+        assert!(
+            prominence_sum_of_max.iter().sum::<f32>() < prominence_sum_of_sum.iter().sum::<f32>()
+        );
+        // assert that sum of max prominence is more than 7
+        assert!(prominence_sum_of_max.iter().all(|&x| x > 7.0));
     }
 
     #[test]
