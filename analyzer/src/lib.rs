@@ -1,6 +1,8 @@
 extern crate ssca_sys;
 use std::any;
 
+mod dsp_dev_utils;
+
 use num::Complex;
 use ssca_sys::{
     allocate_cpu, allocate_device, bessel_func, copy_cpu_to_gpu, copy_gpu_to_cpu, deallocate_cpu,
@@ -207,6 +209,8 @@ impl SSCAWrapper {
     }
 
     pub fn process(&mut self, inp: &mut [Complex<f32>], conj: bool) -> &[f32] {
+        // To get normal SSCA, use conj: False
+
         self.ssca_handle.process(inp, conj);
 
         self.ssca_handle.reduce_feature();
@@ -229,6 +233,8 @@ mod tests {
     use rand_distr::{Distribution, Normal};
     use std::io::Write;
 
+    use dsp_dev_utils::{bpsk_symbols, upsample};
+
     use super::*;
 
     #[test]
@@ -245,7 +251,7 @@ mod tests {
         let mut input_vec = vec![Complex::new(0.0, 0.0); input_size as usize];
 
         // process input vector, and store ouptut in output_vec
-        let output_vec = sscawrapper.process(&mut input_vec, true);
+        let output_vec = sscawrapper.process(&mut input_vec, false);
 
         // check if output_vec is of the correct size
         assert_eq!(output_vec.len(), output_size as usize);
@@ -253,29 +259,14 @@ mod tests {
         // check every element of output_vec is zero
         assert!(output_vec.iter().all(|&x| x == 0.0));
 
-        let mut rng = rand::thread_rng();
-        let normal = Normal::new(0.0, 1.0).unwrap();
-        let mut gaussian_noise: Vec<Complex<f32>> = (0..input_size)
-            .map(|_| Complex::new(normal.sample(&mut rng), normal.sample(&mut rng)))
-            .collect();
+        let upsample_size = 4;
+        let bpsk_symbols = bpsk_symbols((input_size / upsample_size).try_into().unwrap());
+        let mut bpsk_symbols_upsampled = upsample(&bpsk_symbols, upsample_size.try_into().unwrap());
 
-        let num_step: usize = 4;
-        // create a 4 element window going from 1 and dividing by 2 each time
-        let mut window = (0..num_step)
-            .map(|x| 2.0_f32.powi(x.try_into().unwrap()))
-            .collect::<Vec<f32>>();
-        for i in (0..gaussian_noise.len()).step_by(num_step) {
-            for j in 1..num_step {
-                // set the value to gaussian_noise[i] divided by window
-                // gaussian_noise[i + j] = gaussian_noise[i] / window[j];
-                gaussian_noise[i + j] = Complex::new(0.0, 0.0);
-            }
-        }
+        // print first 12 elements of bpsk_symbols_upsampled
+        println!("{:?}", &bpsk_symbols_upsampled[0..12]);
 
-        // print first 10 elements of gaussian_noise
-        println!("{:?}", &gaussian_noise[0..10]);
-
-        let output_vec = sscawrapper.process(&mut gaussian_noise, true);
+        let output_vec: &[f32] = sscawrapper.process(&mut bpsk_symbols_upsampled, false);
         // print output_vec
         println!("{:?}", output_vec);
 
