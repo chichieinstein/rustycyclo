@@ -5,8 +5,8 @@ fn main() {
         .std("c++17")
         .cuda(true)
         .cudart("shared")
-        .file("../ssca/src/spectral_analyzer_C_interface.cu")
-        .file("../ssca/src/spectral_analyzer.cu")
+        .file("../analyzer_native/src/spectral_analyzer_C_interface.cu")
+        .file("../analyzer_native/src/spectral_analyzer.cu")
         .flag("-gencode")
         .flag("arch=compute_75, code=sm_80")
         .compile("libgpu.a");
