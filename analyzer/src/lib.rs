@@ -3,6 +3,8 @@ use std::any;
 
 mod dsp_dev_utils;
 
+pub use dsp_dev_utils::*;
+
 use num::Complex;
 use ssca_sys::{
     allocate_cpu, allocate_device, bessel_func, copy_cpu_to_gpu, copy_gpu_to_cpu, deallocate_cpu,
@@ -129,12 +131,13 @@ pub struct SSCAWrapper {
     ssca_handle: SSCA,
     input_size: i32,
     output_size: i32,
-    ssca_output_buffer_1d: Vec<f32>,
+    ssca_sum_buffer_1d: Vec<f32>,
+    ssca_max_buffer_1d: Vec<f32>,
     cycles_vec: Vec<f32>,
 }
 
 impl SSCAWrapper {
-    fn new() -> Self {
+    pub fn new() -> Self {
         use std::f32::consts::PI;
 
         let n: i32 = 8192;
@@ -200,7 +203,8 @@ impl SSCAWrapper {
             ssca_handle: ssca,
             input_size: size,
             output_size: 2 * n - np / 2,
-            ssca_output_buffer_1d: vec![0.0; (2 * n - np / 2) as usize],
+            ssca_sum_buffer_1d: vec![0.0; (2 * n - np / 2) as usize],
+            ssca_max_buffer_1d: vec![0.0; (2 * n - np / 2) as usize],
             cycles_vec: get_cycles_vec(2 * n - np / 2, n, np),
         }
     }
@@ -217,7 +221,7 @@ impl SSCAWrapper {
         &self.cycles_vec
     }
 
-    pub fn process(&mut self, inp: &mut [Complex<f32>], conj: bool) -> &[f32] {
+    pub fn process(&mut self, inp: &mut [Complex<f32>], conj: bool) -> (&[f32], &[f32]) {
         // To get normal SSCA, use conj: False
 
         self.ssca_handle.process(inp, conj);
@@ -227,13 +231,23 @@ impl SSCAWrapper {
         unsafe {
             copy_gpu_to_cpu(
                 self.ssca_handle.output_buffer.buffer,
-                self.ssca_output_buffer_1d.as_mut_ptr(),
+                self.ssca_sum_buffer_1d.as_mut_ptr(),
+                self.output_size,
+            );
+        }
+
+        self.ssca_handle.reduce_feature_max();
+
+        unsafe {
+            copy_gpu_to_cpu(
+                self.ssca_handle.output_buffer.buffer,
+                self.ssca_max_buffer_1d.as_mut_ptr(),
                 self.output_size,
             );
         }
 
         // return pointer to the output buffer
-        &self.ssca_output_buffer_1d
+        (&self.ssca_sum_buffer_1d, &self.ssca_max_buffer_1d)
     }
 }
 
@@ -260,7 +274,7 @@ mod tests {
         let mut input_vec = vec![Complex::new(0.0, 0.0); input_size as usize];
 
         // process input vector, and store ouptut in output_vec
-        let output_vec = sscawrapper.process(&mut input_vec, false);
+        let (output_vec, _) = sscawrapper.process(&mut input_vec, false);
 
         // check if output_vec is of the correct size
         assert_eq!(output_vec.len(), output_size as usize);
@@ -275,7 +289,7 @@ mod tests {
         // print first 12 elements of bpsk_symbols_upsampled
         println!("{:?}", &bpsk_symbols_upsampled[0..12]);
 
-        let output_vec: &[f32] = sscawrapper.process(&mut bpsk_symbols_upsampled, false);
+        let (output_vec, _) = sscawrapper.process(&mut bpsk_symbols_upsampled, false);
         // print output_vec
         println!("{:?}", output_vec);
 

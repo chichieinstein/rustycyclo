@@ -16,4 +16,9 @@ rand_distr = "0.4.3"
 ssca-sys = { version = "0.1.0", path = "../ssca-sys" }
 
 [dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
 
+
+[[bench]]
+name = "ssca_bench"
+harness = false
