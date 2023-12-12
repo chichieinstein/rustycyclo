@@ -11,4 +11,9 @@ bytemuck = "1.14.0"
 ctrlc = "3.4.1"
 num = "0.4.1"
 num-complex = { version = "0.4.4", features=["bytemuck"]} 
+rand = "0.8.5"
+rand_distr = "0.4.3"
 ssca-sys = { version = "0.1.0", path = "../ssca-sys" }
+
+[dev-dependencies]
+
