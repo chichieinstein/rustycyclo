@@ -25,7 +25,12 @@ extern "C" {
         conj: bool,
     );
 
-    pub fn ssca_reduce2D(
+    pub fn ssca_reduce_max(
+        analyzer: *mut Analyzer,
+        outp: *mut f32,
+    );
+
+    pub fn ssca_reduce_sum(
         analyzer: *mut Analyzer,
         outp: *mut f32,
     );

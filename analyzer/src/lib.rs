@@ -6,7 +6,8 @@ mod dsp_dev_utils;
 use num::Complex;
 use ssca_sys::{
     allocate_cpu, allocate_device, bessel_func, copy_cpu_to_gpu, copy_gpu_to_cpu, deallocate_cpu,
-    deallocate_device, ssca_create, ssca_destroy, ssca_process, ssca_reduce2D, zero_out, Analyzer,
+    deallocate_device, ssca_create, ssca_destroy, ssca_process, ssca_reduce_max, ssca_reduce_sum,
+    zero_out, Analyzer,
 };
 
 /// This is a GPU CUDA pointer containing 32 bit floating point values.
@@ -73,12 +74,20 @@ impl SSCA {
         }
     }
 
-    pub fn reduce_feature(&mut self) {
+    pub fn reduce_feature_max(&mut self) {
         unsafe {
             zero_out(self.output_oned_buffer.buffer, self.reductor_size);
         }
         unsafe {
-            ssca_reduce2D(self.opaque_analyzer, self.output_oned_buffer.buffer);
+            ssca_reduce_max(self.opaque_analyzer, self.output_oned_buffer.buffer);
+        }
+    }
+    pub fn reduce_feature_sum(&mut self) {
+        unsafe {
+            zero_out(self.output_oned_buffer.buffer, self.reductor_size);
+        }
+        unsafe {
+            ssca_reduce_sum(self.opaque_analyzer, self.output_oned_buffer.buffer);
         }
     }
 }
@@ -213,7 +222,7 @@ impl SSCAWrapper {
 
         self.ssca_handle.process(inp, conj);
 
-        self.ssca_handle.reduce_feature();
+        self.ssca_handle.reduce_feature_sum();
 
         unsafe {
             copy_gpu_to_cpu(
@@ -362,14 +371,28 @@ mod tests {
             )
         };
 
-        Obj.reduce_feature();
+        // Max reduction
+        Obj.reduce_feature_max();
 
-        let mut output_non_conj_1D = vec![0.0 as f32; (2 * n - np / 2) as usize];
+        let mut output_non_conj_1D_max = vec![0.0 as f32; (2 * n - np / 2) as usize];
 
         unsafe {
             copy_gpu_to_cpu(
                 Obj.output_oned_buffer.buffer,
-                output_non_conj_1D.as_mut_ptr(),
+                output_non_conj_1D_max.as_mut_ptr(),
+                2 * n - np / 2,
+            );
+        }
+
+        // Sum reduction
+        Obj.reduce_feature_sum();
+
+        let mut output_non_conj_1D_sum = vec![0.0 as f32; (2 * n - np / 2) as usize];
+
+        unsafe {
+            copy_gpu_to_cpu(
+                Obj.output_oned_buffer.buffer,
+                output_non_conj_1D_sum.as_mut_ptr(),
                 2 * n - np / 2,
             );
         }
@@ -381,14 +404,28 @@ mod tests {
 
         unsafe { copy_gpu_to_cpu(Obj.output_buffer.buffer, output_conj.as_mut_ptr(), n * np) };
 
-        Obj.reduce_feature();
+        // Max reduction
+        Obj.reduce_feature_max();
 
-        let mut output_conj_1D = vec![0.0 as f32; (2 * n - np / 2) as usize];
+        let mut output_conj_1D_max = vec![0.0 as f32; (2 * n - np / 2) as usize];
 
         unsafe {
             copy_gpu_to_cpu(
                 Obj.output_oned_buffer.buffer,
-                output_conj_1D.as_mut_ptr(),
+                output_conj_1D_max.as_mut_ptr(),
+                2 * n - np / 2,
+            );
+        }
+
+        // Sum reduction
+        Obj.reduce_feature_sum();
+
+        let mut output_conj_1D_sum = vec![0.0 as f32; (2 * n - np / 2) as usize];
+
+        unsafe {
+            copy_gpu_to_cpu(
+                Obj.output_oned_buffer.buffer,
+                output_conj_1D_sum.as_mut_ptr(),
                 2 * n - np / 2,
             );
         }
@@ -405,16 +442,28 @@ mod tests {
 
         let _ = file2.write_all(outp_slice2);
 
-        let mut file3 = std::fs::File::create("../conj_arr_oned.32f").unwrap();
+        let mut file3 = std::fs::File::create("../conj_arr_oned_max.32f").unwrap();
 
-        let outp_slice3: &mut [u8] = bytemuck::cast_slice_mut(&mut output_conj_1D);
+        let outp_slice3: &mut [u8] = bytemuck::cast_slice_mut(&mut output_conj_1D_max);
 
         let _ = file3.write_all(outp_slice3);
 
-        let mut file4 = std::fs::File::create("../non_conj_arr_oned.32f").unwrap();
+        let mut file4 = std::fs::File::create("../conj_arr_oned_sum.32f").unwrap();
 
-        let outp_slice4: &mut [u8] = bytemuck::cast_slice_mut(&mut output_non_conj_1D);
+        let outp_slice4: &mut [u8] = bytemuck::cast_slice_mut(&mut output_conj_1D_sum);
 
         let _ = file4.write_all(outp_slice4);
+
+        let mut file5 = std::fs::File::create("../non_conj_arr_oned_max.32f").unwrap();
+
+        let outp_slice5: &mut [u8] = bytemuck::cast_slice_mut(&mut output_non_conj_1D_max);
+
+        let _ = file5.write_all(outp_slice5);
+
+        let mut file6 = std::fs::File::create("../non_conj_arr_oned_sum.32f").unwrap();
+
+        let outp_slice6: &mut [u8] = bytemuck::cast_slice_mut(&mut output_non_conj_1D_sum);
+
+        let _ = file6.write_all(outp_slice6);
     }
 }

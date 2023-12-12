@@ -20,9 +20,15 @@ extern "C"
         reinterpret_cast<ssca_cuda*>(ssca_obj)->cyclo_gram(reinterpret_cast<cufftComplex*>(input), output, conj);
     }
 
-    void ssca_reduce2D(ssca* ssca_obj, float* output)
+    void ssca_reduce_sum(ssca* ssca_obj, float* output)
     {
-        reinterpret_cast<ssca_cuda*>(ssca_obj)->ssca_reduce(output);
+        reinterpret_cast<ssca_cuda*>(ssca_obj)->reduce_sum(output);
+        // reductor<<<N, 2>>>(ssca_2d, ssca_1d, N, Np, reductor_size);
+    }
+
+     void ssca_reduce_max(ssca* ssca_obj, float* output)
+    {
+        reinterpret_cast<ssca_cuda*>(ssca_obj)->reduce_max(output);
         // reductor<<<N, 2>>>(ssca_2d, ssca_1d, N, Np, reductor_size);
     }
 

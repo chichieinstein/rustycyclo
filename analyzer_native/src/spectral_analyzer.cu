@@ -18,7 +18,6 @@ void __global__ make_conj(cufftComplex *in, size_t size)
         in[id] = make_cuComplex(in[id].x, -in[id].y);
 }
 
-
 void __global__ average(cufftComplex *in, float *out, int N, int Np, int BATCH)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -84,6 +83,35 @@ void __global__ reductor(float *in, float *out, int N, int Np, int max_size)
         }
     }
 }
+
+void __global__ reductor_max(float *in, float *out, int N, int Np, int max_size)
+{
+    int id = blockIdx.x * blockDim.x + threadIdx.x;
+    // int max_size    = 2 * N - (Np / 2);
+    if (id < max_size)
+    {
+        int reduced_index = (id < N) ? id : id - N + (Np / 2);
+        // cycles[id]        = (id < N) ? Q[reduced_index] + K[0] : Q[reduced_index] + K[Np-1];
+        int quotient = (2 * reduced_index) / Np;
+        if (id < N)
+        {
+            for (int new_ind = 0; new_ind <= quotient; new_ind++)
+            {
+                int xind = id - (new_ind * Np) / 2;
+                out[id] = fmaxf(out[id], in[xind * Np + new_ind]);
+            }
+        }
+        else
+        {
+            int counter = (Np - 1) - quotient;
+            for (int new_ind = 0; new_ind < counter; new_ind++)
+            {
+                int xind = reduced_index + (new_ind * Np) / 2;
+                out[id] = fmaxf(out[id], in[xind * Np + Np - 1 - new_ind]);
+            }
+        }
+    }
+}
 // Called with stride = true
 void __global__ mat_mul_fft_shift_batch_reshape(cufftComplex *window, cufftComplex *input, cufftComplex *out, int N, int Np, int BATCH)
 {
@@ -109,7 +137,7 @@ void __global__ mat_mul_fft_shift_batch_reshape(cufftComplex *window, cufftCompl
 
 // Called with stride = false
 // left_mat should have dimensions N*Np and contains the product of exp_mat and kaiser_2
-void __global__ mat_vec_multiply_fft_shift_batch_center(cufftComplex *left_mat, cufftComplex* input, cufftComplex *right, bool conj, int N, int Np, int BATCH)
+void __global__ mat_vec_multiply_fft_shift_batch_center(cufftComplex *left_mat, cufftComplex *input, cufftComplex *right, bool conj, int N, int Np, int BATCH)
 {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     int idy = blockIdx.y * blockDim.y + threadIdx.y;
@@ -217,7 +245,7 @@ ssca_cuda::ssca_cuda(complex<float> *k1, complex<float> *e_mat, int Nval, int Np
     //     cudaEventCreate(&events[i]);
     //     cufftPlanMany(&plans_2[i], rank, n_2, inembed_2, istride_2, idist_2, onembed_2, ostride_2, odist_2, CUFFT_C2C, batch_2);
     // }
-    
+
     cudaMalloc((void **)&kaiser_1, sizeof(cufftComplex) * Np);
     cudaMalloc((void **)&exp_mat, sizeof(cufftComplex) * N * Np);
 
@@ -227,7 +255,7 @@ ssca_cuda::ssca_cuda(complex<float> *k1, complex<float> *e_mat, int Nval, int Np
     cudaMalloc((void **)&inter_gpu, sizeof(cufftComplex) * N * Np * BATCH);
     // cudaMalloc((void **)&inter_inter_gpu, sizeof(cufftComplex) * N * Np * BATCH);
     // cudaMalloc((void **)&inter_center_gpu, sizeof(cufftComplex) * N * BATCH);
-    cudaMalloc((void **)&output_oned_buffer, sizeof(float)*(2*N - Np / 2));
+    cudaMalloc((void **)&output_oned_buffer, sizeof(float) * (2 * N - Np / 2));
     cudaMalloc((void **)&output_buffer, sizeof(float) * N * Np);
 }
 
@@ -252,7 +280,7 @@ void ssca_cuda::cyclo_gram(cufftComplex *input, float *output, bool conj)
     for (int i = 0; i < BATCH; i++)
     {
         // auto err = cufftExecC2C(plans_2[i], inter_gpu + i*N*Np, inter_gpu + i*N*Np, CUFFT_FORWARD);
-        auto err = cufftExecC2C(plan_2, inter_gpu + i*N*Np, inter_gpu + i*N*Np, CUFFT_FORWARD);
+        auto err = cufftExecC2C(plan_2, inter_gpu + i * N * Np, inter_gpu + i * N * Np, CUFFT_FORWARD);
         auto err_3 = cudaGetLastError();
         // cout << cudaGetErrorString(error_3) << endl;
         // cudaEventRecord(events[i], streams[i]);
@@ -272,9 +300,14 @@ void ssca_cuda::cyclo_gram(cufftComplex *input, float *output, bool conj)
     cudaEventSynchronize(stop);
 }
 
-void ssca_cuda::ssca_reduce(float* output)
+void ssca_cuda::reduce_sum(float *output)
 {
-    reductor<<<N, 2>>>(output_buffer, output, N, Np, (2*N-Np / 2));
+    reductor<<<N, 2>>>(output_buffer, output, N, Np, (2 * N - Np / 2));
+}
+
+void ssca_cuda::reduce_max(float *output)
+{
+    reductor_max<<<N, 2>>>(output_buffer, output, N, Np, (2 * N - Np / 2));
 }
 
 ssca_cuda::~ssca_cuda()
