@@ -19,12 +19,12 @@ fn main(){
     // get the cycle frequency corresponding to each index of the output vector(s)
     let cycle_vec = sscawrapper.get_cycles_vec();
 
+    let mut output_vec_max = vec![0.0; output_size as usize];
+    let mut output_vec_sum = vec![0.0; output_size as usize];
 
     // output_vec_sum contains the sum along the frequency axis
     // output_vec_max contains the max along the frequency axis
-    let (output_vec_sum, output_vec_max) =
-                sscawrapper.process(&mut bpsk_symbols_upsampled, false);
-
+    sscawrapper.process(&mut bpsk_symbols_upsampled, false, &mut output_vec_sum, &mut output_vec_max);
 
 }
 ```
@@ -162,11 +162,8 @@ fn get_cycles_vec(output_size: i32, n: i32, np: i32) -> Vec<f32> {
 }
 pub struct SSCAWrapper {
     ssca_handle: SSCA,
-    n: i32,
     input_size: i32,
     output_size: i32,
-    ssca_sum_buffer_1d: Vec<f32>,
-    ssca_max_buffer_1d: Vec<f32>,
     cycles_vec: Vec<f32>,
 }
 
@@ -235,11 +232,8 @@ impl SSCAWrapper {
         SSCAWrapper {
             // Populate fields if necessary
             ssca_handle: ssca,
-            n: n,
             input_size: size,
             output_size: 2 * n - np / 2,
-            ssca_sum_buffer_1d: vec![0.0; (2 * n - np / 2) as usize],
-            ssca_max_buffer_1d: vec![0.0; (2 * n - np / 2) as usize],
             cycles_vec: get_cycles_vec(2 * n - np / 2, n, np),
         }
     }
@@ -252,17 +246,26 @@ impl SSCAWrapper {
         self.output_size
     }
 
-    pub fn get_cycles_vec(&self) -> &[f32] {
-        &self.cycles_vec
+    pub fn get_cycles_vec(&self) -> Vec<f32> {
+        get_cycles_vec(
+            2 * self.ssca_handle.n - self.ssca_handle.np / 2,
+            self.ssca_handle.n,
+            self.ssca_handle.np,
+        )
     }
 
     pub fn get_n(&self) -> i32 {
-        self.n
+        self.ssca_handle.n
     }
 
-    pub fn process(&mut self, inp: &mut [Complex<f32>], conj: bool) -> (&[f32], &[f32]) {
+    pub fn process(
+        &mut self,
+        inp: &mut [Complex<f32>],
+        conj: bool,
+        ssca_sum_buffer: &mut [f32],
+        ssca_max_buffer: &mut [f32],
+    ) {
         // To get normal SSCA, use conj: False
-
         self.ssca_handle.process(inp, conj);
 
         self.ssca_handle.reduce_feature_sum();
@@ -270,7 +273,7 @@ impl SSCAWrapper {
         unsafe {
             copy_gpu_to_cpu(
                 self.ssca_handle.output_oned_buffer.buffer,
-                self.ssca_sum_buffer_1d.as_mut_ptr(),
+                ssca_sum_buffer.as_mut_ptr(),
                 self.output_size,
             );
         }
@@ -280,13 +283,10 @@ impl SSCAWrapper {
         unsafe {
             copy_gpu_to_cpu(
                 self.ssca_handle.output_oned_buffer.buffer,
-                self.ssca_max_buffer_1d.as_mut_ptr(),
+                ssca_max_buffer.as_mut_ptr(),
                 self.output_size,
             );
         }
-
-        // return pointer to the output buffer
-        (&self.ssca_sum_buffer_1d, &self.ssca_max_buffer_1d)
     }
 }
 
@@ -301,6 +301,35 @@ mod tests {
 
     #[test]
     fn sanity() {
+        let mut sscawrapper = SSCAWrapper::new();
+
+        // get input vector size
+        let input_size = sscawrapper.get_input_size();
+        // get output vector size
+        let output_size = sscawrapper.get_output_size();
+        let mut output_vec_max = vec![0.0; output_size as usize];
+        let mut output_vec_sum = vec![0.0; output_size as usize];
+
+        // create input vector full of zeros
+        let mut input_vec = vec![Complex::new(0.0, 0.0); input_size as usize];
+
+        // process input vector, and store ouptut in output_vec
+        sscawrapper.process(
+            &mut input_vec,
+            false,
+            &mut output_vec_sum,
+            &mut output_vec_max,
+        );
+
+        // check if output_vec is of the correct size
+        assert_eq!(output_vec_sum.len(), output_size as usize);
+
+        // check every element of output_vec is zero
+        assert!(output_vec_sum.iter().all(|&x| x == 0.0));
+    }
+
+    #[test]
+    fn test_bpsk_cycles() {
         // create sscawrapper
         let mut sscawrapper = SSCAWrapper::new();
 
@@ -308,18 +337,6 @@ mod tests {
         let input_size = sscawrapper.get_input_size();
         // get output vector size
         let output_size = sscawrapper.get_output_size();
-
-        // create input vector full of zeros
-        let mut input_vec = vec![Complex::new(0.0, 0.0); input_size as usize];
-
-        // process input vector, and store ouptut in output_vec
-        let (output_vec, _) = sscawrapper.process(&mut input_vec, false);
-
-        // check if output_vec is of the correct size
-        assert_eq!(output_vec.len(), output_size as usize);
-
-        // check every element of output_vec is zero
-        assert!(output_vec.iter().all(|&x| x == 0.0));
 
         // get cycles_vec
         let cycles_vec = sscawrapper.get_cycles_vec();
@@ -338,8 +355,15 @@ mod tests {
         // print first 12 elements of bpsk_symbols_upsampled
         println!("{:?}", &bpsk_symbols_upsampled[0..12]);
 
-        let (output_vec_sum, output_vec_max) =
-            sscawrapper.process(&mut bpsk_symbols_upsampled, false);
+        let mut output_vec_max = vec![0.0; output_size as usize];
+        let mut output_vec_sum = vec![0.0; output_size as usize];
+
+        sscawrapper.process(
+            &mut bpsk_symbols_upsampled,
+            false,
+            &mut output_vec_sum,
+            &mut output_vec_max,
+        );
 
         // get sum of entire output_vec
         let mut ssca_sum_of_sum: f32 = output_vec_sum.iter().sum();

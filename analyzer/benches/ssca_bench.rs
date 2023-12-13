@@ -13,6 +13,9 @@ fn ssca_wrapper_benchmark(c: &mut Criterion) {
     let bpsk_symbols = bpsk_symbols((input_size / upsample_size).try_into().unwrap());
     let mut bpsk_symbols_upsampled = upsample(&bpsk_symbols, upsample_size.try_into().unwrap());
 
+    let mut output_vec_sum = vec![0.0; output_size as usize];
+    let mut output_vec_max = vec![0.0; output_size as usize];
+
     // Create a benchmark group
     let mut group = c.benchmark_group("ssca_wrapper_benchmark");
     group.throughput(Throughput::Elements((input_size) as u64));
@@ -21,10 +24,14 @@ fn ssca_wrapper_benchmark(c: &mut Criterion) {
     // csearchlight.process(&samples, output);
     group.bench_function("ssca_wrapper", |b| {
         b.iter(|| {
-            let (output_vec_sum, output_vec_max) =
-                sscawrapper.process(&mut bpsk_symbols_upsampled, false);
-            black_box(output_vec_sum);
-            black_box(output_vec_max);
+            sscawrapper.process(
+                &mut bpsk_symbols_upsampled,
+                false,
+                &mut output_vec_sum,
+                &mut output_vec_max,
+            );
+            black_box(&output_vec_sum);
+            black_box(&output_vec_max);
         });
     });
 }
