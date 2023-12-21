@@ -168,6 +168,7 @@ pub struct SSCAWrapper {
 }
 
 impl SSCAWrapper {
+    // Keep size = 2^p * (N + Np) for maximal performance for some p
     pub fn new(size_val: i32) -> Self {
         use std::f32::consts::PI;
 
