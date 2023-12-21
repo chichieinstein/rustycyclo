@@ -2,7 +2,8 @@ use analyzer::SSCAWrapper;
 use analyzer::{bpsk_symbols, upsample};
 
 fn main() {
-    let mut sscawrapper = SSCAWrapper::new();
+    let size = 133120;
+    let mut sscawrapper = SSCAWrapper::new(size);
     // get input vector size
     let input_size = sscawrapper.get_input_size();
     // get output vector size

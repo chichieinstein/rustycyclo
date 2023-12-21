@@ -3,7 +3,8 @@ use analyzer::{bpsk_symbols, upsample};
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
 
 fn ssca_wrapper_benchmark(c: &mut Criterion) {
-    let mut sscawrapper = SSCAWrapper::new();
+    let size_val = 133120;
+    let mut sscawrapper = SSCAWrapper::new(size_val);
     // get input vector size
     let input_size = sscawrapper.get_input_size();
     // get output vector size
