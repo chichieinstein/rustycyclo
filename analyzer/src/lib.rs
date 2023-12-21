@@ -168,12 +168,12 @@ pub struct SSCAWrapper {
 }
 
 impl SSCAWrapper {
-    pub fn new() -> Self {
+    pub fn new(size_val: i32) -> Self {
         use std::f32::consts::PI;
 
         let n: i32 = 8192;
         let np: i32 = 128;
-        let size: i32 = 133120 * 8;
+        let size: i32 = size_val;
 
         let n_float = n as f32;
         let np_float = np as f32;
@@ -301,7 +301,8 @@ mod tests {
 
     #[test]
     fn sanity() {
-        let mut sscawrapper = SSCAWrapper::new();
+        let size_val = 133120;
+        let mut sscawrapper = SSCAWrapper::new(size_val);
 
         // get input vector size
         let input_size = sscawrapper.get_input_size();
@@ -331,7 +332,8 @@ mod tests {
     #[test]
     fn test_bpsk_cycles() {
         // create sscawrapper
-        let mut sscawrapper = SSCAWrapper::new();
+        let size_val: i32 = 133120;
+        let mut sscawrapper = SSCAWrapper::new(size_val);
 
         // get input vector size
         let input_size = sscawrapper.get_input_size();
@@ -410,7 +412,7 @@ mod tests {
         // Set things up
         let n: i32 = 8192;
         let np = 128;
-        let size: i32 = 133120 * 8;
+        let size: i32 = 133120;
 
         let n_float = n as f32;
         let np_float = np as f32;
@@ -472,7 +474,7 @@ mod tests {
         let mut input: &mut [Complex<f32>] = bytemuck::cast_slice_mut(&mut samples_bytes);
         let mut input_vec = vec![Complex::new(0.0 as f32, 0.0); size as usize];
 
-        input_vec[..input.len()].clone_from_slice(input);
+        input_vec[..(size as usize)].clone_from_slice(&input[..(size as usize)]);
 
         // Process to get conjugate features
 
