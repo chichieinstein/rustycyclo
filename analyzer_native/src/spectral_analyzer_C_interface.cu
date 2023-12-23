@@ -66,10 +66,10 @@ extern "C"
     //     cudaMemcpy(outp, inp, sizeof(float)*size, cudaMemcpyDeviceToHost);
     // }
 
-    float bessel_func(float inp)
-    {
-        return cyl_bessel_if(0.0, inp);
-    }
+    // float bessel_func(float inp)
+    // {
+    //     return cyl_bessel_if(0.0, inp);
+    // }
 
     void zero_out(float* inp, int size)
     {

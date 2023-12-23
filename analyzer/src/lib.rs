@@ -40,11 +40,10 @@ pub use dsp_dev_utils::*;
 
 use num::Complex;
 use ssca_sys::{
-    allocate_cpu, allocate_device, bessel_func, copy_cpu_to_gpu, copy_gpu_to_cpu, deallocate_cpu,
-    deallocate_device, ssca_create, ssca_destroy, ssca_process, ssca_reduce_max, ssca_reduce_sum,
+    ssca_create, ssca_destroy, ssca_process, ssca_reduce_max, ssca_reduce_sum,
     zero_out, Analyzer,
 };
-use rustdevice::DevicePtr;
+use rustdevice::{DevicePtr, compute_bessel};
 
 // /// This is a GPU CUDA pointer containing 32 bit floating point values.
 // pub struct DevicePtr {
@@ -191,7 +190,7 @@ impl SSCAWrapper {
                 let y = x as f32;
                 let arg = 2.0 * y / np_float - 1.0;
                 let carg = kbeta_1 * ((1.0 - arg * arg).sqrt());
-                Complex::new(unsafe { bessel_func(carg) / bessel_func(kbeta_1) }, 0.0)
+                Complex::new(unsafe { compute_bessel(carg) / compute_bessel(kbeta_1) }, 0.0)
             })
             .collect();
 
@@ -200,7 +199,7 @@ impl SSCAWrapper {
                 let y = x as f32;
                 let arg = 2.0 * y / n_float - 1.0;
                 let carg = kbeta_2 * ((1.0 - arg * arg).sqrt());
-                Complex::new(unsafe { bessel_func(carg) / bessel_func(kbeta_2) }, 0.0)
+                Complex::new(unsafe { compute_bessel(carg) / compute_bessel(kbeta_2) }, 0.0)
             })
             .collect();
 
@@ -418,7 +417,7 @@ mod tests {
                 let y = x as f32;
                 let arg = 2.0 * y / np_float - 1.0;
                 let carg = kbeta_1 * ((1.0 - arg * arg).sqrt());
-                Complex::new(unsafe { bessel_func(carg) / bessel_func(kbeta_1) }, 0.0)
+                Complex::new(unsafe { compute_bessel(carg) / compute_bessel(kbeta_1) }, 0.0)
             })
             .collect();
 
@@ -427,7 +426,7 @@ mod tests {
                 let y = x as f32;
                 let arg = 2.0 * y / n_float - 1.0;
                 let carg = kbeta_2 * ((1.0 - arg * arg).sqrt());
-                Complex::new(unsafe { bessel_func(carg) / bessel_func(kbeta_2) }, 0.0)
+                Complex::new(unsafe { compute_bessel(carg) / compute_bessel(kbeta_2) }, 0.0)
             })
             .collect();
 

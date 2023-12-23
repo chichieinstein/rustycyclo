@@ -24,7 +24,7 @@ extern "C"
     // void copy_cpu_gpu(float*, float*, int size);
     // void copy_gpu_cpu(float*, float*, int size);
 
-    float bessel_func(float);
+    // float bessel_func(float);
 }
 
 #endif

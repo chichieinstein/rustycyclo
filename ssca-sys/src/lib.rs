@@ -35,17 +35,17 @@ extern "C" {
         outp: *mut f32,
     );
 
-    pub fn allocate_device(size: i32) -> *mut f32;
+    // pub fn allocate_device(size: i32) -> *mut f32;
 
-    pub fn allocate_cpu(size: i32) -> *mut f32;
+    // pub fn allocate_cpu(size: i32) -> *mut f32;
 
-    pub fn deallocate_device(inp: *mut f32);
-    pub fn deallocate_cpu(inp: *mut f32);
+    // pub fn deallocate_device(inp: *mut f32);
+    // pub fn deallocate_cpu(inp: *mut f32);
 
-    pub fn copy_cpu_to_gpu(inp: *mut f32, outp: *mut f32, size: i32);
-    pub fn copy_gpu_to_cpu(inp: *mut f32, outp: *mut f32, size: i32);
+    // pub fn copy_cpu_to_gpu(inp: *mut f32, outp: *mut f32, size: i32);
+    // pub fn copy_gpu_to_cpu(inp: *mut f32, outp: *mut f32, size: i32);
 
-    pub fn bessel_func(inp: f32) -> f32;
+    // pub fn bessel_func(inp: f32) -> f32;
 
     pub fn zero_out(inp: *mut f32, size: i32);
 }
