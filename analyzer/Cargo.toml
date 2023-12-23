@@ -6,17 +6,18 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.75"
-bytemuck = "1.14.0"
-ctrlc = "3.4.1"
-num = "0.4.1"
-num-complex = { version = "0.4.4", features=["bytemuck"]} 
-rand = "0.8.5"
-rand_distr = "0.4.3"
-ssca-sys = { version = "0.1.0", path = "../ssca-sys" }
+anyhow.workspace = true
+bytemuck.workspace = true
+ctrlc.workspace = true
+num.workspace = true
+num-complex.workspace = true
+rand.workspace = true
+rand_distr.workspace = true
+ssca-sys.workspace = true
+rustdevice.workspace = true
 
 [dev-dependencies]
-criterion = { version = "0.5.1", features = ["html_reports"] }
+criterion.workspace = true
 
 
 [[bench]]

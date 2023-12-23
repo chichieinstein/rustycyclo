@@ -32,39 +32,39 @@ extern "C"
         // reductor<<<N, 2>>>(ssca_2d, ssca_1d, N, Np, reductor_size);
     }
 
-    float* allocate_device(int size)
-    {
-        float* outp;
-        cudaMalloc((void**)&outp, sizeof(float)*size);
-        return outp;
-    }
+    // float* allocate_device(int size)
+    // {
+    //     float* outp;
+    //     cudaMalloc((void**)&outp, sizeof(float)*size);
+    //     return outp;
+    // }
 
-    void deallocate_device(float* inp)
-    {
-        cudaFree(inp);
-    }
+    // void deallocate_device(float* inp)
+    // {
+    //     cudaFree(inp);
+    // }
 
-    float* allocate_cpu(int size)
-    {
-        float* outp;
-        outp = new float [size];
-        return outp;
-    }
+    // float* allocate_cpu(int size)
+    // {
+    //     float* outp;
+    //     outp = new float [size];
+    //     return outp;
+    // }
 
-    void deallocate_cpu(float* inp)
-    {
-        delete [] inp;
-    }
+    // void deallocate_cpu(float* inp)
+    // {
+    //     delete [] inp;
+    // }
 
-    void copy_cpu_to_gpu(float* inp, float* outp, int size)
-    {
-        cudaMemcpy(outp, inp, sizeof(float)*size, cudaMemcpyHostToDevice);
-    }
+    // void copy_cpu_to_gpu(float* inp, float* outp, int size)
+    // {
+    //     cudaMemcpy(outp, inp, sizeof(float)*size, cudaMemcpyHostToDevice);
+    // }
 
-    void copy_gpu_to_cpu(float* inp, float* outp, int size)
-    {
-        cudaMemcpy(outp, inp, sizeof(float)*size, cudaMemcpyDeviceToHost);
-    }
+    // void copy_gpu_to_cpu(float* inp, float* outp, int size)
+    // {
+    //     cudaMemcpy(outp, inp, sizeof(float)*size, cudaMemcpyDeviceToHost);
+    // }
 
     float bessel_func(float inp)
     {

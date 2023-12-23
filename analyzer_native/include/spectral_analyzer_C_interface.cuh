@@ -15,14 +15,14 @@ extern "C"
     void ssca_reduce_sum(ssca*, float*);
     void zero_out(float*, int);
 
-    float* allocate_device(int);
-    void deallocate_device(float*);
+    // float* allocate_device(int);
+    // void deallocate_device(float*);
 
-    float* allocate_cpu(int);
-    void deallocate_cpu(float*);
+    // float* allocate_cpu(int);
+    // void deallocate_cpu(float*);
 
-    void copy_cpu_gpu(float*, float*, int size);
-    void copy_gpu_cpu(float*, float*, int size);
+    // void copy_cpu_gpu(float*, float*, int size);
+    // void copy_gpu_cpu(float*, float*, int size);
 
     float bessel_func(float);
 }
