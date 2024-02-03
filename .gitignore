@@ -7,3 +7,5 @@
 **/.vscode-server
 **/.32f
 **/.png
+**/*.json
+**/.clangd
