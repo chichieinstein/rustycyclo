@@ -54,22 +54,27 @@ class ssca_cuda
     int *onembed_1;
     int *inembed_2;
     int *onembed_2;
+    
     cufftComplex *kaiser_1;
-    // cufftComplex *kaiser_2;
     cufftComplex *exp_mat;
     cufftComplex *inter_gpu;
-    // cufftComplex *inter_inter_gpu;
+    cufftComplex *inter_conj_gpu;
+    cufftComplex *inter_non_conj_gpu;
     cufftComplex *inp_buffer;
-    // cufftComplex *inter_center_gpu;
 
-    float* output_buffer;
-
-    float* output_oned_buffer;
+    float* output_oned_conj_max;
+    float* output_oned_conj_sum;
+    float* output_oned_non_conj_max;
+    float* output_oned_non_conj_sum;
+    float* output_non_conj_buffer;
+    float* output_conj_buffer;
     
-    ssca_cuda(complex<float>*, complex<float>*, int, int, int);
-    void cyclo_gram(cufftComplex*, float*, bool);
-    void reduce_max(float*);
-    void reduce_sum(float*);
+    int device_id;
+    
+    ssca_cuda(complex<float>*, complex<float>*, int, int, int, int);
+    void cyclo_gram(cufftComplex*);
+    void reduce_max();
+    void reduce_sum();
     ~ssca_cuda();
 };
 

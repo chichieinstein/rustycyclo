@@ -25,6 +25,8 @@ services:
     volumes:
       - "vscode-config:/root/.vscode-server:rw"
       - ".:/root/ssca:rw"
+      - "~/.ssh:/root/.ssh:rw"
+      - "~/nvimhelper/nvim:/root/.config/nvim:rw"
     networks:
       - nw
     ports:
