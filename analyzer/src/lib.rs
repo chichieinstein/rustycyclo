@@ -41,29 +41,36 @@ pub use dsp_dev_utils::*;
 use num::Complex;
 use ssca_sys::{
     allocate_cpu, allocate_device, bessel_func, copy_cpu_to_gpu, copy_gpu_to_cpu, deallocate_cpu,
-    deallocate_device, ssca_create, ssca_destroy, ssca_process, ssca_reduce_max, ssca_reduce_sum,
-    zero_out, Analyzer,
+    deallocate_device, ssca_create, ssca_destroy, ssca_dump, ssca_process, ssca_reduce_max,
+    ssca_reduce_sum, zero_out, Analyzer,
 };
 
 /// This is a GPU CUDA pointer containing 32 bit floating point values.
+/// This is local to a specific GPU.
 pub struct DevicePtr {
     buffer: *mut f32,
     size: i32,
+    device_id: i32,
 }
 
 impl DevicePtr {
     /// Allocates space for size number of float32s on the GPU.
-    pub fn new(size: i32) -> Self {
+    pub fn new(size: i32, id: Option<i32>) -> Self {
+        let device_id = match id {
+            Some(num) => num,
+            None => 0,
+        };
         Self {
-            buffer: unsafe { allocate_device(size) },
+            buffer: unsafe { allocate_device(size, device_id) },
             size,
+            device_id,
         }
     }
 }
 
 impl Drop for DevicePtr {
     fn drop(&mut self) {
-        unsafe { deallocate_device(self.buffer) };
+        unsafe { deallocate_device(self.buffer, self.device_id) };
     }
 }
 
@@ -73,8 +80,10 @@ pub struct SSCA {
     np: i32,
     size: i32,
     reductor_size: i32,
-    output_buffer: DevicePtr,
-    output_oned_buffer: DevicePtr,
+    output_oned_conj_max_buffer: Vec<f32>,
+    output_oned_conj_sum_buffer: Vec<f32>,
+    output_oned_non_conj_max_buffer: Vec<f32>,
+    output_oned_non_conj_sum_buffer: Vec<f32>,
 }
 
 impl SSCA {
@@ -84,45 +93,61 @@ impl SSCA {
         n: i32,
         np: i32,
         size: i32,
+        id: Option<i32>,
     ) -> Self {
+        let device_id = match id {
+            Some(x) => x,
+            None => 0,
+        };
+        let reductor_size = (2 * n - np / 2) as usize;
         Self {
             opaque_analyzer: unsafe {
-                ssca_create(k1.as_mut_ptr(), exp_mat.as_mut_ptr(), n, np, size)
+                ssca_create(
+                    k1.as_mut_ptr(),
+                    exp_mat.as_mut_ptr(),
+                    n,
+                    np,
+                    size,
+                    device_id,
+                )
             },
-            output_buffer: DevicePtr::new(n * np),
-            output_oned_buffer: DevicePtr::new(2 * n - np / 2),
+            output_oned_conj_max_buffer: vec![0.0; reductor_size],
+            output_oned_conj_sum_buffer: vec![0.0; reductor_size],
+            output_oned_non_conj_max_buffer: vec![0.0; reductor_size],
+            output_oned_non_conj_sum_buffer: vec![0.0; reductor_size],
             n,
             np,
             size,
-            reductor_size: 2 * n - np / 2,
+            reductor_size: reductor_size as i32,
         }
     }
 
-    pub fn process(&mut self, inp: &mut [Complex<f32>], conj: bool) {
-        unsafe {
-            ssca_process(
-                self.opaque_analyzer,
-                inp.as_mut_ptr(),
-                self.output_buffer.buffer,
-                conj,
-            )
-        }
+    pub fn process(&mut self, inp: &mut [Complex<f32>]) {
+        unsafe { ssca_process(self.opaque_analyzer, inp.as_mut_ptr()) }
     }
 
     pub fn reduce_feature_max(&mut self) {
         unsafe {
-            zero_out(self.output_oned_buffer.buffer, self.reductor_size);
-        }
-        unsafe {
-            ssca_reduce_max(self.opaque_analyzer, self.output_oned_buffer.buffer);
+            zero_out(self.opaque_analyzer);
+            ssca_reduce_max(self.opaque_analyzer);
         }
     }
     pub fn reduce_feature_sum(&mut self) {
         unsafe {
-            zero_out(self.output_oned_buffer.buffer, self.reductor_size);
+            zero_out(self.opaque_analyzer);
+            ssca_reduce_sum(self.opaque_analyzer);
         }
+    }
+
+    pub fn dump_res(&mut self) {
         unsafe {
-            ssca_reduce_sum(self.opaque_analyzer, self.output_oned_buffer.buffer);
+            ssca_dump(
+                self.opaque_analyzer,
+                self.output_oned_conj_max_buffer.as_mut_ptr(),
+                self.output_oned_conj_sum_buffer.as_mut_ptr(),
+                self.output_oned_non_conj_max_buffer.as_mut_ptr(),
+                self.output_oned_non_conj_sum_buffer,
+            );
         }
     }
 }
@@ -165,12 +190,18 @@ pub struct SSCAWrapper {
     input_size: i32,
     output_size: i32,
     cycles_vec: Vec<f32>,
+    id: i32,
 }
 
 impl SSCAWrapper {
     // Keep size = 2^p * (N + Np) for maximal performance for some p
-    pub fn new(size_val: i32) -> Self {
+    pub fn new(size_val: i32, device_id: Option<i32>) -> Self {
         use std::f32::consts::PI;
+
+        let id = match device_id {
+            Some(x) => x,
+            None => 0,
+        };
 
         let n: i32 = 8192;
         let np: i32 = 128;
@@ -228,7 +259,7 @@ impl SSCAWrapper {
             });
 
         // Initialize SSCA here with the computed values
-        let ssca = SSCA::new(&mut k1, &mut exp_mat, n, np, size);
+        let ssca = SSCA::new(&mut k1, &mut exp_mat, n, np, size, Some(id));
 
         SSCAWrapper {
             // Populate fields if necessary
@@ -236,6 +267,7 @@ impl SSCAWrapper {
             input_size: size,
             output_size: 2 * n - np / 2,
             cycles_vec: get_cycles_vec(2 * n - np / 2, n, np),
+            id,
         }
     }
 
@@ -262,32 +294,22 @@ impl SSCAWrapper {
     pub fn process(
         &mut self,
         inp: &mut [Complex<f32>],
-        conj: bool,
-        ssca_sum_buffer: &mut [f32],
-        ssca_max_buffer: &mut [f32],
+        ssca_non_conj_sum_buffer: &mut [f32],
+        ssca_non_conj_max_buffer: &mut [f32],
+        ssca_conj_max_buffer: &mut [f32],
+        ssca_conj_sum_buffer: &mut [f32],
     ) {
         // To get normal SSCA, use conj: False
-        self.ssca_handle.process(inp, conj);
-
-        self.ssca_handle.reduce_feature_sum();
-
-        unsafe {
-            copy_gpu_to_cpu(
-                self.ssca_handle.output_oned_buffer.buffer,
-                ssca_sum_buffer.as_mut_ptr(),
-                self.output_size,
-            );
-        }
-
+        self.ssca_handle.process(inp);
         self.ssca_handle.reduce_feature_max();
-
-        unsafe {
-            copy_gpu_to_cpu(
-                self.ssca_handle.output_oned_buffer.buffer,
-                ssca_max_buffer.as_mut_ptr(),
-                self.output_size,
-            );
-        }
+        self.ssca_handle.reduce_feature_sum();
+        self.ssca_handle.dump_res();
+        ssca_conj_max_buffer.clone_from_slice(&self.ssca_handle.output_oned_conj_max_buffer);
+        ssca_conj_sum_buffer.clone_from_slice(&self.ssca_handle.output_oned_conj_sum_buffer);
+        ssca_non_conj_max_buffer
+            .clone_from_slice(&self.ssca_handle.output_oned_non_conj_max_buffer);
+        ssca_non_conj_sum_buffer
+            .clone_from_slice(&self.ssca_handle.output_oned_non_conj_sum_buffer);
     }
 }
 

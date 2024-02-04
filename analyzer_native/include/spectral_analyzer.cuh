@@ -75,6 +75,7 @@ class ssca_cuda
     void cyclo_gram(cufftComplex*);
     void reduce_max();
     void reduce_sum();
+    void dump(float*, float*, float*, float*);
     ~ssca_cuda();
 };
 

@@ -14,6 +14,7 @@ extern "C"
     void ssca_reduce_max(ssca*);
     void ssca_reduce_sum(ssca*);
     void zero_out(ssca*);
+    void ssca_dump(ssca*, float*, float*, float*, float*);
 
     float* allocate_device(int, int);
     void deallocate_device(float*, int);

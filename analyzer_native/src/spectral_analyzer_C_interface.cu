@@ -76,4 +76,11 @@ void zero_out(ssca* ssca_obj) {
 	set_zero<<<size, 1>>>(
 	    reinterpret_cast<ssca_cuda*>(ssca_obj)->output_oned_conj_max, size);
 }
+
+void ssca_dump(ssca* ssca_obj, float* conj_max, float* conj_sum,
+	       float* non_conj_max, float* non_conj_sum) {
+	reinterpret_cast<ssca_cuda*>(ssca_obj)->dump(
+	    conj_max, conj_sum, non_conj_max, non_conj_sum);
 }
+}
+

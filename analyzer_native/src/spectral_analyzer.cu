@@ -299,6 +299,18 @@ void ssca_cuda::reduce_max() {
 			       N, Np, (2 * N - Np / 2));
 }
 
+void ssca_cuda::dump(float* conj_max,
+		     float* conj_sum,
+		     float* non_conj_max,
+		     float* non_conj_sum) {
+	int reductor_size = 2 * N - Np / 2;
+	cudaSetDevice(device_id);
+	cudaMemcpy(conj_max, output_oned_conj_max, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(non_conj_max, output_oned_non_conj_max, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(conj_sum, output_oned_conj_sum, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(non_conj_sum, output_oned_non_conj_sum, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
+}
+
 ssca_cuda::~ssca_cuda() {
 	cudaSetDevice(device_id);
 	cufftDestroy(plan_1);
