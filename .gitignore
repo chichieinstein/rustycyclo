@@ -5,7 +5,7 @@
 **/.gnupg
 **/.nv
 **/.vscode-server
-**/.32f
-**/.png
+**/*.32f
+**/*.png
 **/*.json
 **/.clangd
