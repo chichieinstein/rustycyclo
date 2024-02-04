@@ -4,7 +4,8 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughpu
 
 fn ssca_wrapper_benchmark(c: &mut Criterion) {
     let size_val = 133120;
-    let mut sscawrapper = SSCAWrapper::new(size_val);
+    let device = Some(0);
+    let mut sscawrapper = SSCAWrapper::new(size_val, device);
     // get input vector size
     let input_size = sscawrapper.get_input_size();
     // get output vector size
@@ -14,8 +15,10 @@ fn ssca_wrapper_benchmark(c: &mut Criterion) {
     let bpsk_symbols = bpsk_symbols((input_size / upsample_size).try_into().unwrap());
     let mut bpsk_symbols_upsampled = upsample(&bpsk_symbols, upsample_size.try_into().unwrap());
 
-    let mut output_vec_sum = vec![0.0; output_size as usize];
-    let mut output_vec_max = vec![0.0; output_size as usize];
+    let mut output_conj_sum = vec![0.0; output_size as usize];
+    let mut output_conj_max = vec![0.0; output_size as usize];
+    let mut output_non_conj_max = vec![0.0; output_size as usize];
+    let mut output_non_conj_sum = vec![0.0; output_size as usize];
 
     // Create a benchmark group
     let mut group = c.benchmark_group("ssca_wrapper_benchmark");
@@ -27,12 +30,15 @@ fn ssca_wrapper_benchmark(c: &mut Criterion) {
         b.iter(|| {
             sscawrapper.process(
                 &mut bpsk_symbols_upsampled,
-                false,
-                &mut output_vec_sum,
-                &mut output_vec_max,
+                &mut output_non_conj_sum,
+                &mut output_non_conj_max,
+                &mut output_conj_sum,
+                &mut output_conj_max,
             );
-            black_box(&output_vec_sum);
-            black_box(&output_vec_max);
+            black_box(&output_non_conj_max);
+            black_box(&output_non_conj_sum);
+            black_box(&output_conj_sum);
+            black_box(&output_conj_max);
         });
     });
 }

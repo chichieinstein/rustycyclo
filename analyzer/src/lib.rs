@@ -6,7 +6,8 @@ use analyzer::SSCAWrapper;
 use analyzer::{bpsk_symbols, upsample};
 
 fn main(){
-    let mut sscawrapper = SSCAWrapper::new();
+    let size = 133120;
+    let mut sscawrapper = SSCAWrapper::new(size, None);
     // get input vector size
     let input_size = sscawrapper.get_input_size();
     // get output vector size
@@ -18,14 +19,18 @@ fn main(){
 
     // get the cycle frequency corresponding to each index of the output vector(s)
     let cycle_vec = sscawrapper.get_cycles_vec();
-
-    let mut output_vec_max = vec![0.0; output_size as usize];
-    let mut output_vec_sum = vec![0.0; output_size as usize];
+    let mut output_vec_conj_max = vec![0.0; output_size as usize];
+    let mut output_vec_conj_sum = vec![0.0; output_size as usize];
+    let mut output_vec_non_conj_max = vec![0.0; output_size as usize];
+    let mut output_vec_non_conj_sum = vec![0.0; output_size as usize];
 
     // output_vec_sum contains the sum along the frequency axis
     // output_vec_max contains the max along the frequency axis
-    sscawrapper.process(&mut bpsk_symbols_upsampled, false, &mut output_vec_sum, &mut output_vec_max);
-
+    sscawrapper.process(&mut bpsk_symbols_upsampled,
+            &mut output_vec_non_conj_sum,
+            &mut output_vec_non_conj_max,
+            &mut output_vec_conj_sum,
+            &mut output_vec_conj_max);
 }
 ```
 
@@ -80,10 +85,10 @@ pub struct SSCA {
     np: i32,
     size: i32,
     reductor_size: i32,
-    output_oned_conj_max_buffer: Vec<f32>,
-    output_oned_conj_sum_buffer: Vec<f32>,
-    output_oned_non_conj_max_buffer: Vec<f32>,
-    output_oned_non_conj_sum_buffer: Vec<f32>,
+    pub output_oned_conj_max_buffer: Vec<f32>,
+    pub output_oned_conj_sum_buffer: Vec<f32>,
+    pub output_oned_non_conj_max_buffer: Vec<f32>,
+    pub output_oned_non_conj_sum_buffer: Vec<f32>,
 }
 
 impl SSCA {
@@ -126,15 +131,10 @@ impl SSCA {
         unsafe { ssca_process(self.opaque_analyzer, inp.as_mut_ptr()) }
     }
 
-    pub fn reduce_feature_max(&mut self) {
+    pub fn reduce_feature(&mut self) {
         unsafe {
             zero_out(self.opaque_analyzer);
             ssca_reduce_max(self.opaque_analyzer);
-        }
-    }
-    pub fn reduce_feature_sum(&mut self) {
-        unsafe {
-            zero_out(self.opaque_analyzer);
             ssca_reduce_sum(self.opaque_analyzer);
         }
     }
@@ -146,7 +146,7 @@ impl SSCA {
                 self.output_oned_conj_max_buffer.as_mut_ptr(),
                 self.output_oned_conj_sum_buffer.as_mut_ptr(),
                 self.output_oned_non_conj_max_buffer.as_mut_ptr(),
-                self.output_oned_non_conj_sum_buffer,
+                self.output_oned_non_conj_sum_buffer.as_mut_ptr(),
             );
         }
     }
@@ -296,13 +296,12 @@ impl SSCAWrapper {
         inp: &mut [Complex<f32>],
         ssca_non_conj_sum_buffer: &mut [f32],
         ssca_non_conj_max_buffer: &mut [f32],
-        ssca_conj_max_buffer: &mut [f32],
         ssca_conj_sum_buffer: &mut [f32],
+        ssca_conj_max_buffer: &mut [f32],
     ) {
         // To get normal SSCA, use conj: False
         self.ssca_handle.process(inp);
-        self.ssca_handle.reduce_feature_max();
-        self.ssca_handle.reduce_feature_sum();
+        self.ssca_handle.reduce_feature();
         self.ssca_handle.dump_res();
         ssca_conj_max_buffer.clone_from_slice(&self.ssca_handle.output_oned_conj_max_buffer);
         ssca_conj_sum_buffer.clone_from_slice(&self.ssca_handle.output_oned_conj_sum_buffer);
@@ -325,14 +324,16 @@ mod tests {
     #[test]
     fn sanity() {
         let size_val = 133120;
-        let mut sscawrapper = SSCAWrapper::new(size_val);
+        let mut sscawrapper = SSCAWrapper::new(size_val, None);
 
         // get input vector size
         let input_size = sscawrapper.get_input_size();
         // get output vector size
         let output_size = sscawrapper.get_output_size();
-        let mut output_vec_max = vec![0.0; output_size as usize];
-        let mut output_vec_sum = vec![0.0; output_size as usize];
+        let mut output_vec_conj_max = vec![0.0; output_size as usize];
+        let mut output_vec_conj_sum = vec![0.0; output_size as usize];
+        let mut output_vec_non_conj_max = vec![0.0; output_size as usize];
+        let mut output_vec_non_conj_sum = vec![0.0; output_size as usize];
 
         // create input vector full of zeros
         let mut input_vec = vec![Complex::new(0.0, 0.0); input_size as usize];
@@ -340,23 +341,25 @@ mod tests {
         // process input vector, and store ouptut in output_vec
         sscawrapper.process(
             &mut input_vec,
-            false,
-            &mut output_vec_sum,
-            &mut output_vec_max,
+            &mut output_vec_non_conj_sum,
+            &mut output_vec_non_conj_max,
+            &mut output_vec_conj_sum,
+            &mut output_vec_conj_max,
         );
 
         // check if output_vec is of the correct size
-        assert_eq!(output_vec_sum.len(), output_size as usize);
+        assert_eq!(output_vec_conj_sum.len(), output_size as usize);
 
         // check every element of output_vec is zero
-        assert!(output_vec_sum.iter().all(|&x| x == 0.0));
+        assert!(output_vec_conj_sum.iter().all(|&x| x == 0.0));
     }
 
     #[test]
     fn test_bpsk_cycles() {
         // create sscawrapper
         let size_val: i32 = 133120;
-        let mut sscawrapper = SSCAWrapper::new(size_val);
+        let device: i32 = 0;
+        let mut sscawrapper = SSCAWrapper::new(size_val, Some(device));
 
         // get input vector size
         let input_size = sscawrapper.get_input_size();
@@ -380,19 +383,22 @@ mod tests {
         // print first 12 elements of bpsk_symbols_upsampled
         println!("{:?}", &bpsk_symbols_upsampled[0..12]);
 
-        let mut output_vec_max = vec![0.0; output_size as usize];
-        let mut output_vec_sum = vec![0.0; output_size as usize];
+        let mut output_conj_max = vec![0.0; output_size as usize];
+        let mut output_conj_sum = vec![0.0; output_size as usize];
+        let mut output_non_conj_max = vec![0.0; output_size as usize];
+        let mut output_non_conj_sum = vec![0.0; output_size as usize];
 
         sscawrapper.process(
             &mut bpsk_symbols_upsampled,
-            false,
-            &mut output_vec_sum,
-            &mut output_vec_max,
+            &mut output_non_conj_sum,
+            &mut output_non_conj_max,
+            &mut output_conj_sum,
+            &mut output_conj_max,
         );
 
         // get sum of entire output_vec
-        let mut ssca_sum_of_sum: f32 = output_vec_sum.iter().sum();
-        let mut ssca_sum_of_max: f32 = output_vec_max.iter().sum();
+        let mut ssca_sum_of_sum: f32 = output_non_conj_sum.iter().sum();
+        let mut ssca_sum_of_max: f32 = output_non_conj_max.iter().sum();
 
         let fundamental_cycle_idx = ((ssca_n as f32) / (upsample_size as f32)) as i32;
         // create array with first, second and third fundamental cycles
@@ -404,12 +410,12 @@ mod tests {
 
         let prominence_sum_of_sum = expected_cycles
             .iter()
-            .map(|&x| output_vec_sum[x] / ssca_sum_of_sum * (output_vec_sum.len() as f32))
+            .map(|&x| output_conj_sum[x] / ssca_sum_of_sum * (output_conj_sum.len() as f32))
             .collect::<Vec<f32>>();
 
         let prominence_sum_of_max = expected_cycles
             .iter()
-            .map(|&x| output_vec_max[x] / ssca_sum_of_max * (output_vec_max.len() as f32))
+            .map(|&x| output_conj_max[x] / ssca_sum_of_max * (output_conj_max.len() as f32))
             .collect::<Vec<f32>>();
         // print expected_cycle/sum
         println!("expected_cycles/sum_of_sum: {:?}", prominence_sum_of_sum);
@@ -488,7 +494,8 @@ mod tests {
                 }
             });
         // Create SSCA object
-        let mut Obj = SSCA::new(&mut k1, &mut exp_mat, n, np, size);
+        let device = Some(1);
+        let mut Obj = SSCA::new(&mut k1, &mut exp_mat, n, np, size, device);
 
         // Read data from file
         let mut file = std::fs::File::open("../dsss_10dB_1.32cf").unwrap();
@@ -499,113 +506,29 @@ mod tests {
 
         input_vec[..(size as usize)].clone_from_slice(&input[..(size as usize)]);
 
-        // Process to get conjugate features
+        // Process
+        Obj.process(&mut input_vec);
+        // Reduction
+        Obj.reduce_feature();
 
-        Obj.process(&mut input_vec, false);
-
-        let mut output_non_conj = vec![0.0 as f32; (n * np) as usize];
-
-        unsafe {
-            copy_gpu_to_cpu(
-                Obj.output_buffer.buffer,
-                output_non_conj.as_mut_ptr(),
-                n * np,
-            )
-        };
-
-        // Max reduction
-        Obj.reduce_feature_max();
-
-        let mut output_non_conj_1D_max = vec![0.0 as f32; (2 * n - np / 2) as usize];
-
-        unsafe {
-            copy_gpu_to_cpu(
-                Obj.output_oned_buffer.buffer,
-                output_non_conj_1D_max.as_mut_ptr(),
-                2 * n - np / 2,
-            );
-        }
-
-        // Sum reduction
-        Obj.reduce_feature_sum();
-
-        let mut output_non_conj_1D_sum = vec![0.0 as f32; (2 * n - np / 2) as usize];
-
-        unsafe {
-            copy_gpu_to_cpu(
-                Obj.output_oned_buffer.buffer,
-                output_non_conj_1D_sum.as_mut_ptr(),
-                2 * n - np / 2,
-            );
-        }
-
-        // Process to get non-conjugate features
-        Obj.process(&mut input_vec, true);
-
-        let mut output_conj = vec![0.0 as f32; (n * np) as usize];
-
-        unsafe { copy_gpu_to_cpu(Obj.output_buffer.buffer, output_conj.as_mut_ptr(), n * np) };
-
-        // Max reduction
-        Obj.reduce_feature_max();
-
-        let mut output_conj_1D_max = vec![0.0 as f32; (2 * n - np / 2) as usize];
-
-        unsafe {
-            copy_gpu_to_cpu(
-                Obj.output_oned_buffer.buffer,
-                output_conj_1D_max.as_mut_ptr(),
-                2 * n - np / 2,
-            );
-        }
-
-        // Sum reduction
-        Obj.reduce_feature_sum();
-
-        let mut output_conj_1D_sum = vec![0.0 as f32; (2 * n - np / 2) as usize];
-
-        unsafe {
-            copy_gpu_to_cpu(
-                Obj.output_oned_buffer.buffer,
-                output_conj_1D_sum.as_mut_ptr(),
-                2 * n - np / 2,
-            );
-        }
-
-        let mut file1 = std::fs::File::create("../conj_arr.32f").unwrap();
-
-        let outp_slice: &mut [u8] = bytemuck::cast_slice_mut(&mut output_conj);
-
-        let _ = file1.write_all(outp_slice);
-
-        let mut file2 = std::fs::File::create("../non_conj_arr.32f").unwrap();
-
-        let outp_slice2: &mut [u8] = bytemuck::cast_slice_mut(&mut output_non_conj);
-
-        let _ = file2.write_all(outp_slice2);
+        Obj.dump_res();
 
         let mut file3 = std::fs::File::create("../conj_arr_oned_max.32f").unwrap();
-
-        let outp_slice3: &mut [u8] = bytemuck::cast_slice_mut(&mut output_conj_1D_max);
-
+        let outp_slice3: &mut [u8] = bytemuck::cast_slice_mut(&mut Obj.output_oned_conj_max_buffer);
         let _ = file3.write_all(outp_slice3);
 
         let mut file4 = std::fs::File::create("../conj_arr_oned_sum.32f").unwrap();
-
-        let outp_slice4: &mut [u8] = bytemuck::cast_slice_mut(&mut output_conj_1D_sum);
-
+        let outp_slice4: &mut [u8] = bytemuck::cast_slice_mut(&mut Obj.output_oned_conj_sum_buffer);
         let _ = file4.write_all(outp_slice4);
 
         let mut file5 = std::fs::File::create("../non_conj_arr_oned_max.32f").unwrap();
-
-        let outp_slice5: &mut [u8] = bytemuck::cast_slice_mut(&mut output_non_conj_1D_max);
-
+        let outp_slice5: &mut [u8] =
+            bytemuck::cast_slice_mut(&mut Obj.output_oned_non_conj_max_buffer);
         let _ = file5.write_all(outp_slice5);
 
         let mut file6 = std::fs::File::create("../non_conj_arr_oned_sum.32f").unwrap();
-
-        let outp_slice6: &mut [u8] = bytemuck::cast_slice_mut(&mut output_non_conj_1D_sum);
-
+        let outp_slice6: &mut [u8] =
+            bytemuck::cast_slice_mut(&mut Obj.output_oned_non_conj_sum_buffer);
         let _ = file6.write_all(outp_slice6);
     }
 }

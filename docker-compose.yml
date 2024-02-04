@@ -32,7 +32,9 @@ services:
     ports:
       - 127.0.0.1::5901
     devices:
-      - nvidia.com/gpu=0      
+      - nvidia.com/gpu=0   
+      - nvidia.com/gpu=1
+      - nvidia.com/gpu=2   
     deploy:
       resources:
         limits:

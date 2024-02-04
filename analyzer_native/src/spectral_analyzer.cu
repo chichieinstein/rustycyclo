@@ -210,8 +210,8 @@ ssca_cuda::ssca_cuda(complex<float> *k1, complex<float> *e_mat, int Nval,
 	onembed_2 = n_2;
 
 	device_id = device;
+	cudaSetDevice(device_id);
 	cudaEventCreateWithFlags(&stop, cudaEventBlockingSync);
-	cudaSetDevice(device);
 	cufftPlanMany(&plan_1, rank, n_1, inembed_1, istride_1, idist_1,
 		      onembed_1, ostride_1, odist_1, CUFFT_C2C, batch_1);
 	cufftPlanMany(&plan_2, rank, n_2, inembed_2, istride_2, idist_2,
@@ -250,37 +250,40 @@ void ssca_cuda::cyclo_gram(cufftComplex *input) {
 	dim3 dimGridReshape(Np / 32, N / 32);
 
 	cudaSetDevice(device_id);
+	//auto err0 = cudaGetLastError();
 	cudaMemcpy(inp_buffer, input, sizeof(cufftComplex) * size,
 		   cudaMemcpyHostToDevice);
 	mat_mul_fft_shift_batch_reshape<<<dimGridMatrixCreation,
 					  dimBlockMatrixCreation>>>(
 	    kaiser_1, inp_buffer, inter_gpu, N, Np, BATCH);
-	auto error = cudaGetLastError();
-	// cout << cudaGetErrorString(error) << endl;
 	auto arr = cufftExecC2C(plan_1, inter_gpu, inter_gpu, CUFFT_FORWARD);
-	auto error_2 = cudaGetLastError();
-	// cout << cudaGetErrorString(error_2) << endl;
+	//auto err_1 = cudaGetLastError();
+	//cout << cudaGetErrorString(err_1) << endl;
 	mat_vec_multiply_fft_shift_batch_center<<<dimGridMatrixCreation,
 						  dimBlockMatrixCreation>>>(
 	    exp_mat, inp_buffer, inter_gpu, inter_non_conj_gpu, inter_conj_gpu,
 	    N, Np, BATCH);
-	auto error_3 = cudaGetLastError();
-	// cout << cudaGetErrorString(error_3) << endl;
 	for (int i = 0; i < BATCH; i++) {
-		auto err =
+		auto err2 =
 		    cufftExecC2C(plan_2, inter_conj_gpu + i * N * Np,
 				 inter_conj_gpu + i * N * Np, CUFFT_FORWARD);
 		auto err1 = cufftExecC2C(
 		    plan_2, inter_non_conj_gpu + i * N * Np,
 		    inter_non_conj_gpu + i * N * Np, CUFFT_FORWARD);
-		auto err_3 = cudaGetLastError();
+	//	auto err_3 = cudaGetLastError();
 	}
 	average<<<dimGridReshape, dimBlockReshape>>>(
 	    inter_conj_gpu, output_conj_buffer, N, Np, BATCH);
+	//auto err2 = cudaGetLastError();
+	//cout << cudaGetErrorString(err2) << endl;
 	average<<<dimGridReshape, dimBlockReshape>>>(
 	    inter_non_conj_gpu, output_non_conj_buffer, N, Np, BATCH);
+	//auto err6 = cudaGetLastError();
+	//cout << cudaGetErrorString(err6) << endl;
 	cudaEventRecord(stop);
 	cudaEventSynchronize(stop);
+	//auto err7 = cudaGetLastError();
+	//cout << "synchronization error: " << cudaGetErrorString(err7) << endl;
 }
 
 void ssca_cuda::reduce_sum() {
@@ -299,16 +302,18 @@ void ssca_cuda::reduce_max() {
 			       N, Np, (2 * N - Np / 2));
 }
 
-void ssca_cuda::dump(float* conj_max,
-		     float* conj_sum,
-		     float* non_conj_max,
-		     float* non_conj_sum) {
+void ssca_cuda::dump(float *conj_max, float *conj_sum, float *non_conj_max,
+		     float *non_conj_sum) {
 	int reductor_size = 2 * N - Np / 2;
 	cudaSetDevice(device_id);
-	cudaMemcpy(conj_max, output_oned_conj_max, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
-	cudaMemcpy(non_conj_max, output_oned_non_conj_max, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
-	cudaMemcpy(conj_sum, output_oned_conj_sum, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
-	cudaMemcpy(non_conj_sum, output_oned_non_conj_sum, sizeof(float)*reductor_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(conj_max, output_oned_conj_max,
+		   sizeof(float) * reductor_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(non_conj_max, output_oned_non_conj_max,
+		   sizeof(float) * reductor_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(conj_sum, output_oned_conj_sum,
+		   sizeof(float) * reductor_size, cudaMemcpyDeviceToHost);
+	cudaMemcpy(non_conj_sum, output_oned_non_conj_sum,
+		   sizeof(float) * reductor_size, cudaMemcpyDeviceToHost);
 }
 
 ssca_cuda::~ssca_cuda() {

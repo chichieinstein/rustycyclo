@@ -55,17 +55,17 @@ if __name__ == '__main__':
     N, Np = 8192, 128
     reductor_size = 2*N - Np // 2
 
-    output = np.fromfile("non_conj_arr.32f", dtype='float32')
-    output = output.reshape((N, Np))
-    conj_outp = np.fromfile("conj_arr.32f", dtype='float32')
-    conj_outp = conj_outp.reshape((N,Np))
+    # output = np.fromfile("non_conj_arr.32f", dtype='float32')
+    # output = output.reshape((N, Np))
+    # conj_outp = np.fromfile("conj_arr.32f", dtype='float32')
+    # conj_outp = conj_outp.reshape((N,Np))
     
     oned_outp_max = np.fromfile("non_conj_arr_oned_max.32f", dtype='float32')
     oned_conj_outp_max = np.fromfile("conj_arr_oned_max.32f", dtype='float32')
     oned_outp_sum = np.fromfile("non_conj_arr_oned_sum.32f", dtype='float32')
     oned_conj_outp_sum = np.fromfile("conj_arr_oned_sum.32f", dtype='float32')
 
-    print(len(output))
+    # print(len(output))
     fig, ((ax_1, ax_2), (ax_3, ax_4)) = plt.subplots(2, 2)
 
     Q = np.fft.fftshift(np.fft.fftfreq(N))

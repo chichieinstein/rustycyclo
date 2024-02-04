@@ -3,6 +3,9 @@
 #include "../include/spectral_analyzer.cuh"
 #include "../include/spectral_analyzer_C_interface.cuh"
 using std::cyl_bessel_if;
+#include <iostream>
+using std::cout;
+using std::endl;
 
 extern "C" {
 ssca* ssca_create(complex<float>* k1, complex<float>* exp_mat, int Nval,
@@ -68,13 +71,22 @@ void zero_out(ssca* ssca_obj) {
 	set_zero<<<size, 1>>>(
 	    reinterpret_cast<ssca_cuda*>(ssca_obj)->output_oned_non_conj_sum,
 	    size);
+	//auto err = cudaGetLastError();
+	//cout << "Zero out One: " << cudaGetErrorString(err) << endl;
 	set_zero<<<size, 1>>>(
 	    reinterpret_cast<ssca_cuda*>(ssca_obj)->output_oned_non_conj_max,
 	    size);
+	//auto err_2 = cudaGetLastError();
+	//cout << "Zero out Two: " << cudaGetErrorString(err_2) << endl;
 	set_zero<<<size, 1>>>(
 	    reinterpret_cast<ssca_cuda*>(ssca_obj)->output_oned_conj_sum, size);
+	//auto err_3 = cudaGetLastError();
+	//cout << "Zero out Three: " << cudaGetErrorString(err_3) << endl;
 	set_zero<<<size, 1>>>(
 	    reinterpret_cast<ssca_cuda*>(ssca_obj)->output_oned_conj_max, size);
+	//auto err_4 = cudaGetLastError();
+	//cout << "Zero out: " << cudaGetErrorString(err_4) << endl;
+
 }
 
 void ssca_dump(ssca* ssca_obj, float* conj_max, float* conj_sum,

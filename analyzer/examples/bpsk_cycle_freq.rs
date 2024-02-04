@@ -3,7 +3,7 @@ use analyzer::{bpsk_symbols, upsample};
 
 fn main() {
     let size = 133120;
-    let mut sscawrapper = SSCAWrapper::new(size);
+    let mut sscawrapper = SSCAWrapper::new(size, None);
     // get input vector size
     let input_size = sscawrapper.get_input_size();
     // get output vector size
@@ -16,16 +16,19 @@ fn main() {
     // get the cycle frequency corresponding to each index of the output vector(s)
     let cycle_vec = sscawrapper.get_cycles_vec();
 
-    let mut output_vec_max = vec![0.0; output_size as usize];
-    let mut output_vec_sum = vec![0.0; output_size as usize];
+    let mut output_conj_max = vec![0.0; output_size as usize];
+    let mut output_non_conj_sum = vec![0.0; output_size as usize];
+    let mut output_conj_sum = vec![0.0; output_size as usize];
+    let mut output_non_conj_max = vec![0.0; output_size as usize];
 
     // output_vec_sum contains the sum along the frequency axis
     // output_vec_max contains the max along the frequency axis
     sscawrapper.process(
         &mut bpsk_symbols_upsampled,
-        false,
-        &mut output_vec_sum,
-        &mut output_vec_max,
+        &mut output_non_conj_sum,
+        &mut output_non_conj_max,
+        &mut output_conj_sum,
+        &mut output_conj_max,
     );
 
     // Find index where cycle_vec is 0
@@ -40,7 +43,7 @@ fn main() {
     // Find max value between cycle_vec_zero_index and the end of output_vec_sum
     let mut max_value = 0.0;
     let mut max_index = 0;
-    for (i, value) in output_vec_sum
+    for (i, value) in output_non_conj_sum
         .iter()
         .enumerate()
         .skip(cycle_vec_zero_index + 20)

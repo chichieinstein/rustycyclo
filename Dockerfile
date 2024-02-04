@@ -33,13 +33,11 @@ RUN apt-get update -y && apt-get install -y llvm-runtime
 RUN apt-get update -y && apt-get install -y llvm
 RUN apt-get update -y && apt-get install -y python3-clang
 
-ENV CC=/usr/bin/clang
-ENV CXX=/usr/bin/clang++
 
 RUN apt-get update && \
     apt-get install -y lsb-release
 
-RUN apt-get update && apt-get -y install cmake snapd 
+RUN apt-get update && apt-get -y install cmake  
 
 RUN apt-get update -y && apt-get install -y ripgrep 
 
@@ -77,6 +75,8 @@ RUN make CMAKE_BUILD_TYPE=RelWithDebInfo
 RUN make install
 WORKDIR /
 RUN rm -rf /neovim
+
+ENV CUDA_VISIBLE_DEVICES=0,1,2
 # This step builds and installs Clang+LLVM toolchain from source that matches the version the 
 # Rust compiler uses. Openmp is also enabled.
 # LLVM gets installed in opt/llvm
