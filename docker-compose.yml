@@ -27,14 +27,13 @@ services:
       - ".:/root/ssca:rw"
       - "~/.ssh:/root/.ssh:rw"
       - "~/nvimhelper/nvim:/root/.config/nvim:rw"
+      - "~/nvimhelper/setup_project.py:/root/setup_project.py:rw"
     networks:
       - nw
     ports:
       - 127.0.0.1::5901
     devices:
-      - nvidia.com/gpu=0   
-      - nvidia.com/gpu=1
-      - nvidia.com/gpu=2   
+      - nvidia.com/gpu=0      
     deploy:
       resources:
         limits:

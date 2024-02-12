@@ -76,7 +76,18 @@ RUN make install
 WORKDIR /
 RUN rm -rf /neovim
 
-ENV CUDA_VISIBLE_DEVICES=0,1,2
+RUN mkdir /usr/local/nvm
+ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 21.6.1
+
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
+    && . $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default \
+    && npm install -g pyright
+
+RUN pip install autopep8
 # This step builds and installs Clang+LLVM toolchain from source that matches the version the 
 # Rust compiler uses. Openmp is also enabled.
 # LLVM gets installed in opt/llvm
