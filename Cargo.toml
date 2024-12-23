@@ -1,0 +1,7 @@
+[workspace]
+resolver = "2"
+members = ["ssca-sys", "analyzer"]
+default-members = ["ssca-sys", "analyzer"]
+
+[workspace.package]
+edition = "2021"
